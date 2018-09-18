@@ -1,0 +1,10 @@
+# python
+__pycache__
+.venv
+*.pyc
+
+#Docker
+volumes/
+
+#Pycharm project file
+.idea
