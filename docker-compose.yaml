@@ -1,7 +1,7 @@
-version: '3.1'
+version: '3.4'
 
 services:
-  mongo:
+  db:
     image: mongo
     restart: always
     ports:
@@ -9,3 +9,19 @@ services:
     environment:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: example
+    volumes:
+    - ./volumes/db:/data/db
+
+  api:
+    image: inventory-coop
+    build:
+      context: .
+      network: host
+    environment:
+      MONGODB_URI: mongodb://user:user@db:27017/inventory-coop
+    volumes:
+    - .:/app
+    ports:
+    - 8000:80/tcp
+    depends_on:
+      - db

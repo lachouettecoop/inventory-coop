@@ -1,7 +1,16 @@
-import datetime
 from eve import Eve
+from flask import jsonify
 
 app = Eve()
 
-# using reloader will destroy the in-memory sqlite db
-app.run(port=5555, debug=True, use_reloader=False)
+
+@app.route('/status')
+def hello():
+    return jsonify({
+        'name': 'inventory-coop',
+        'status': 'ok'
+    })
+
+
+if __name__ == '__main__':
+    app.run()
