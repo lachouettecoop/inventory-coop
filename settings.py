@@ -3,6 +3,8 @@ import os
 # We want to seamlessy run our API both locally and on Heroku. If running on
 # Heroku, sensible DB connection settings are stored in environment variables.
 MONGO_URI = os.environ.get('MONGODB_URI', 'mongodb://user:user@localhost:27017/inventory-coop')
+URL_PREFIX = 'api'
+API_VERSION = 'v1'
 
 
 # Enable reads (GET), inserts (POST) and DELETE for resources/collections

@@ -1,7 +1,9 @@
 from eve import Eve
-from flask import jsonify
+from flask import jsonify, render_template
 
-app = Eve()
+app = Eve(__name__,
+          static_folder='./client/dist/static',
+          template_folder='./client/dist')
 
 
 @app.route('/status')
@@ -12,5 +14,10 @@ def hello():
     })
 
 
+@app.route('/')
+def index():
+    return render_template("index.html")
+
+
 if __name__ == '__main__':
-    app.run()
+    app.run(debug=True)
