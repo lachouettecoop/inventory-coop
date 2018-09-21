@@ -25,25 +25,25 @@ export default {
   data: () => ({
     headers: [
       { text: 'Date', value: 'date' },
-      { text: 'Actif', value: 'active' }
+      { text: 'Actif', value: 'active' },
     ],
     inventories: [
       {
         id: 1,
         active: false,
-        date: '2018/09/10'
+        date: '2018/09/10',
       },
       {
         id: 2,
         active: true,
-        date: '2018/09/09'
-      }
-    ]
+        date: '2018/09/09',
+      },
+    ],
   }),
 
   methods: {
-  }
-}
+  },
+};
 </script>
 
 <style scoped>
