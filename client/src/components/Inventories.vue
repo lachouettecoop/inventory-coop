@@ -1,46 +1,62 @@
 <template>
-  <v-card>
-    <v-card-title primary-title>
-      <div class="headline">Liste des inventaires</div>
-    </v-card-title>
-    <v-data-table
-      :headers="headers"
-      :items="inventories"
-      hide-actions
-      item-key="id"
-    >
-      <template slot="items" slot-scope="props">
-        <tr>
-          <td class="text-lg-left">{{ props.item.date }}</td>
-          <td class="text-lg-left">{{ props.item.active }}</td>
-        </tr>
-      </template>
-    </v-data-table>
-  </v-card>
+  <v-layout row>
+    <v-flex xs12 sm6 offset-sm3>
+      <v-card>
+        <v-card-title primary-title>
+          <div class="headline">Gestion des inventaires</div>
+          <v-btn fab absolute right color="teal darken-3" class="white--text">
+            <v-icon>add</v-icon>
+          </v-btn>
+        </v-card-title>
+        <v-list>
+          <template v-for="inventory in inventories">
+            <v-list-tile
+              :key="inventory.id"
+              avatar
+            >
+              <v-list-tile-avatar>
+                <v-icon v-if="inventory.active">fas fa-spinner</v-icon>
+                <v-icon v-else>fas fa-stop-circle</v-icon>
+              </v-list-tile-avatar>
+
+              <v-list-tile-content>
+                <v-list-tile-title v-html="inventory.date"></v-list-tile-title>
+              </v-list-tile-content>
+
+              <v-list-tile-content>
+                <div>
+                  <v-btn fab small>
+                    <v-icon v-if="inventory.active" color="indigo darken-1">fas fa-edit</v-icon>
+                    <v-icon v-else color="green darken-1">fas fa-eye</v-icon>
+                  </v-btn>
+                  <v-btn fab small>
+                    <v-icon color="red lighten-2">fas fa-trash</v-icon>
+                  </v-btn>
+                </div>
+              </v-list-tile-content>
+            </v-list-tile>
+          </template>
+        </v-list>
+      </v-card>
+    </v-flex>
+  </v-layout>
 </template>
 
 <script>
 export default {
   name: 'Inventories',
-  data: () => ({
-    headers: [
-      { text: 'Date', value: 'date' },
-      { text: 'Actif', value: 'active' },
-    ],
-    inventories: [
-      {
-        id: 1,
-        active: false,
-        date: '2018/09/10',
-      },
-      {
-        id: 2,
-        active: true,
-        date: '2018/09/09',
-      },
-    ],
-  }),
-
+  data() {
+    return {
+    };
+  },
+  created() {
+    this.$store.dispatch('getResources', 'inventories');
+  },
+  computed: {03
+    inventories() {
+      return this.$store.getters('inventories');
+    },
+  },
   methods: {
   },
 };
