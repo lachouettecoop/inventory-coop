@@ -1,6 +1,6 @@
-# frontend
+# inventory-coop-client
 
-> pipo
+> Client for inventory-coop
 
 ## Build Setup
 

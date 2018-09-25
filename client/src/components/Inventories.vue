@@ -50,11 +50,14 @@ export default {
     };
   },
   created() {
-    this.$store.dispatch('getResources', 'inventories');
+    this.$store.dispatch('getResources/inventories');
   },
-  computed: {03
+  computed: {
     inventories() {
-      return this.$store.getters('inventories');
+      return this.$store.getters['inventories/data'];
+    },
+    loading() {
+      return this.$store.getters['inventories/isLoading'];
     },
   },
   methods: {
