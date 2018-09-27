@@ -1,12 +1,11 @@
 <template>
   <v-layout row>
     <v-flex xs12 sm6 offset-sm3>
-      <img src="@/assets/logo.png">
       <v-card>
         <v-card-title primary-title>
-          <div class="headline">Gestion des inventaires</div>
+          <div class="headline">Inventaire</div>
           <v-btn fab absolute right color="teal darken-3" class="white--text">
-            <v-icon>add</v-icon>
+            <v-icon>present_to_all</v-icon>
           </v-btn>
         </v-card-title>
         <v-list>
@@ -43,24 +42,7 @@
 
 <script>
 export default {
-  name: 'Inventories',
-  data() {
-    return {
-    };
-  },
-  created() {
-    this.$store.dispatch('inventories/getResources');
-  },
-  computed: {
-    inventories() {
-      return this.$store.getters['inventories/data'];
-    },
-    loading() {
-      return this.$store.getters['inventories/isLoading'];
-    },
-  },
-  methods: {
-  },
+  name: 'Inventory.vue',
 };
 </script>
 

@@ -5,7 +5,7 @@ import os
 MONGO_URI = os.environ.get('MONGODB_URI', 'mongodb://user:user@localhost:27017/inventory-coop')
 URL_PREFIX = 'api'
 API_VERSION = 'v1'
-
+X_DOMAINS = '*'
 
 # Enable reads (GET), inserts (POST) and DELETE for resources/collections
 # (if you omit this line, the API will default to ['GET'] and provide

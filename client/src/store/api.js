@@ -98,26 +98,35 @@ const getActions = key => ({
   },
 });
 
+const mapItem = (obj) => {
+  const rObj = {};
+  rObj.id = obj._id; // eslint-disable-line no-underscore-dangle
+  rObj.date = obj.date;
+  rObj.active = obj.active;
+  return rObj;
+};
+
 const mutations = {
   setDataLoading(state, value) {
     state.loading = value;
   },
   setResources(state, data) {
-    state.data = data;
+    state.data = data._items.map(obj => mapItem(obj)); // eslint-disable-line no-underscore-dangle
   },
   setResource(state, data) {
+    const item = mapItem(data);
     const index = findIndex(
       state.data,
-      x => x.id === data.id,
+      x => x.id === item.id,
     );
     if (index !== -1) {
-      state.data.splice(index, 1, data);
+      state.data.splice(index, 1, item);
     } else {
-      state.data.splice(0, 0, data);
+      state.data.splice(0, 0, item);
     }
   },
   addResource(state, data) {
-    state.data.unshift(data);
+    state.data.unshift(mapItem(data));
   },
   updateResource(state, data) {
     const index = findIndex(
