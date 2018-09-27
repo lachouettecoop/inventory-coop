@@ -44,13 +44,13 @@ const getActions = key => ({
         commit('setDataLoading', false);
       });
   },
-  createResource({ commit }, { url, resource }) {
+  createResource({ commit }, { resource }) {
     commit('setDataLoading', true);
     commit('setPendingResource', { type: 'create', data: resource || key });
     return new Promise((resolve, reject) => {
-      axios.post(`${process.env.apiBaseUrl}/${key}${url || ''}`, resource)
+      axios.post(`${process.env.apiBaseUrl}/${key}`, resource)
         .then(({ data }) => {
-          commit('addResource', data);
+          commit('addResource', { resource, data });
           commit('setDataLoading', false);
           commit('setPendingResource');
           resolve(data);
@@ -61,14 +61,20 @@ const getActions = key => ({
         });
     });
   },
-  updateResource({ commit }, { id, subpath, resource }) {
+  updateResource({ commit }, { id, etag, resource }) {
     commit('setDataLoading', true);
-    commit('setPendingResource', { type: 'update', data: resource || id });
+    commit('setPendingResource', { type: 'update', data: resource });
     return new Promise((resolve, reject) => {
-      axios.put(`${process.env.apiBaseUrl}/${key}/${id}${subpath || ''}`, resource)
+      axios({
+        method: 'put',
+        url: `${process.env.apiBaseUrl}/${key}/${id}`,
+        responseType: 'json',
+        headers: { 'If-Match': etag },
+        data: resource,
+      })
         .then(({ data }) => {
           commit('setDataLoading', false);
-          commit('updateResource', data);
+          commit('updateResource', { resource, data });
           commit('setPendingResource');
           resolve(data);
         })
@@ -78,17 +84,18 @@ const getActions = key => ({
         });
     });
   },
-  deleteResource({ commit }, { id }) {
+  deleteResource({ commit }, { resource }) {
     commit('setDataLoading', true);
     return new Promise((resolve, reject) => {
       axios({
         method: 'delete',
-        url: `${process.env.apiBaseUrl}/${key}/${id}`,
+        url: `${process.env.apiBaseUrl}/${key}/${resource.id}`,
         responseType: 'json',
+        headers: { 'If-Match': resource.etag },
       })
         .then(() => {
           commit('setDataLoading', false);
-          commit('removeData', id);
+          commit('removeData', resource.id);
           resolve();
         })
         .catch((error) => {
@@ -109,7 +116,7 @@ const mutations = {
     state.loading = value;
   },
   setResources(state, data) {
-    state.data = data._items.map(obj => mapItem(obj)); // eslint-disable-line no-underscore-dangle
+    state.data = data.items.map(obj => mapItem(obj));
   },
   setResource(state, data) {
     const item = mapItem(data);
@@ -124,15 +131,17 @@ const mutations = {
     }
   },
   addResource(state, data) {
-    state.data.unshift(mapItem(data));
+    const item = mapItem({ ...data.resource, ...data.data });
+    state.data.unshift(item);
   },
   updateResource(state, data) {
     const index = findIndex(
       state.data,
-      x => x.id === data.id,
+      x => x.id === data.data._id, // eslint-disable-line no-underscore-dangle
     );
     if (index !== -1) {
-      state.data.splice(index, 1, data);
+      const item = Object.assign(state.data[index], data.resource, data.data);
+      state.data.splice(index, 1, item);
     }
   },
   removeData(state, id) {

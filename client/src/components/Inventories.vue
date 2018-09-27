@@ -5,7 +5,8 @@
       <v-card>
         <v-card-title primary-title>
           <div class="headline">Gestion des inventaires</div>
-          <v-btn fab absolute right color="teal darken-3" class="white--text">
+          <v-btn fab absolute right color="teal darken-3" class="white--text"
+                 @click="addInventory">
             <v-icon>add</v-icon>
           </v-btn>
         </v-card-title>
@@ -35,7 +36,8 @@
                     fas fa-eye
                   </v-icon>
                 </v-btn>
-                <v-btn fab small>
+                <v-btn fab small
+                       @click="removeInventory(inventory)">
                   <v-icon color="red lighten-2">fas fa-trash</v-icon>
                 </v-btn>
               </div>
@@ -64,6 +66,29 @@ export default {
   methods: {
     jumpToInventoryDetails(inventory) {
       this.$router.push({ name: 'Inventory', params: { id: inventory.id } });
+    },
+    addInventory() {
+      const today = new Date();
+      let dd = today.getDate();
+      let mm = today.getMonth() + 1;
+      const yyyy = today.getFullYear();
+      if (dd < 10) { dd = `0${dd}`; }
+      if (mm < 10) { mm = `0${mm}`; }
+      const date = `${yyyy}-${mm}-${dd}`;
+      const resource = {
+        date,
+        active: true,
+      };
+      this.$store.dispatch({
+        type: 'inventories/createResource',
+        resource,
+      });
+    },
+    removeInventory(inventory) {
+      this.$store.dispatch({
+        type: 'inventories/deleteResource',
+        resource: inventory,
+      });
     },
   },
 };

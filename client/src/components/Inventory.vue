@@ -2,6 +2,10 @@
   <v-layout column v-if="inventory">
     <v-flex>
       <v-card raw>
+        <v-btn fab small right absolute
+               @click="deactive()">
+          <v-icon>fas fa-stop-circle</v-icon>
+        </v-btn>
         <v-card-text>
           <span class="grey--text">{{ inventory.date }}</span>
           <span class="indigo--text">{{ inventory.active }}</span>
@@ -64,6 +68,14 @@ export default {
     },
   },
   methods: {
+    deactive() {
+      this.$store.dispatch({
+        type: 'inventories/updateResource',
+        id: this.inventoryId,
+        etag: this.inventory.inventory,
+        resource: { active: false },
+      });
+    },
   },
 };
 </script>

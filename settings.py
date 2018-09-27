@@ -5,7 +5,9 @@ import os
 MONGO_URI = os.environ.get('MONGODB_URI', 'mongodb://user:user@localhost:27017/inventory-coop')
 URL_PREFIX = 'api'
 API_VERSION = 'v1'
+
 X_DOMAINS = '*'
+X_HEADERS = ['Authorization', 'Content-type', 'If-Match']
 
 # Enable reads (GET), inserts (POST) and DELETE for resources/collections
 # (if you omit this line, the API will default to ['GET'] and provide
@@ -14,9 +16,11 @@ RESOURCE_METHODS = ['GET', 'POST', 'DELETE']
 
 # Enable reads (GET), edits (PATCH) and deletes of individual items
 # (defaults to read-only item access).
-ITEM_METHODS = ['GET', 'PATCH', 'DELETE']
+ITEM_METHODS = ['GET', 'PATCH', 'PUT', 'DELETE']
 
-DATE_FORMAT = "%d/%m/%Y"
+DATE_FORMAT = "%Y-%m-%d"
+ETAG = 'etag'
+ITEMS = 'items'
 
 inventories = {
     'item_title': 'Inventory',
