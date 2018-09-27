@@ -99,10 +99,8 @@ const getActions = key => ({
 });
 
 const mapItem = (obj) => {
-  const rObj = {};
+  const rObj = obj;
   rObj.id = obj._id; // eslint-disable-line no-underscore-dangle
-  rObj.date = obj.date;
-  rObj.active = obj.active;
   return rObj;
 };
 

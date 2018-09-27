@@ -23,11 +23,17 @@
               <v-list-tile-content>
                 <v-list-tile-title v-html="inventory.date"></v-list-tile-title>
               </v-list-tile-content>
-
               <div>
-                <v-btn fab small>
-                  <v-icon v-if="inventory.active" color="indigo darken-1">fas fa-edit</v-icon>
-                  <v-icon v-else color="green darken-1">fas fa-eye</v-icon>
+                <v-btn fab small
+                       @click="jumpToInventoryDetails(inventory)">
+                  <v-icon v-if="inventory.active"
+                          color="indigo darken-1">
+                    fas fa-edit
+                  </v-icon>
+                  <v-icon v-else
+                          color="green darken-1">
+                    fas fa-eye
+                  </v-icon>
                 </v-btn>
                 <v-btn fab small>
                   <v-icon color="red lighten-2">fas fa-trash</v-icon>
@@ -44,10 +50,6 @@
 <script>
 export default {
   name: 'Inventories',
-  data() {
-    return {
-    };
-  },
   created() {
     this.$store.dispatch('inventories/getResources');
   },
@@ -60,6 +62,9 @@ export default {
     },
   },
   methods: {
+    jumpToInventoryDetails(inventory) {
+      this.$router.push({ name: 'Inventory', params: { id: inventory.id } });
+    },
   },
 };
 </script>
