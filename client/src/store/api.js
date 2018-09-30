@@ -18,15 +18,24 @@ const onError = (key, commit, error, reject) => {
 };
 
 const getActions = key => ({
-  getResources({ commit }, { where }) {
-    let url = `${process.env.apiBaseUrl}/${key}`;
-    if (where) {
-      url += `? ${where}`;
-    }
-    console.log('getActions: ', url);
+  getResources({ commit }) {
     commit('setDataLoading', true);
     return new Promise((resolve, reject) => {
-      axios.get(url)
+      axios.get(`${process.env.apiBaseUrl}/${key}`)
+        .then(({ data }) => {
+          commit('setResources', data);
+          commit('setDataLoading', false);
+          resolve(data);
+        })
+        .catch((error) => {
+          onError(key, commit, error, reject);
+        });
+    });
+  },
+  getResourcesWhere({ commit }, { where }) {
+    commit('setDataLoading', true);
+    return new Promise((resolve, reject) => {
+      axios.get(`${process.env.apiBaseUrl}/${key}?${JSON.stringify(where)}`)
         .then(({ data }) => {
           commit('setResources', data);
           commit('setDataLoading', false);

@@ -37,7 +37,7 @@
           >
             <template slot="items" slot-scope="props">
               <td>{{ props.item.name }}</td>
-              <td>{{ props.item.barecode }}</td>
+              <td>{{ props.item.barcode }}</td>
             </template>
           </v-data-table>
         </v-card-text>
@@ -62,7 +62,7 @@ export default {
     return {
       headers: [
         { text: 'Nom', value: 'name' },
-        { text: 'Barecode', value: 'barecode' },
+        { text: 'Barcode', value: 'barcode' },
       ],
     };
   },
@@ -70,6 +70,10 @@ export default {
     this.$store.dispatch({
       type: 'inventories/fetchResource',
       id: this.inventoryId,
+    });
+    this.$store.dispatch({
+      type: 'products/getResourcesWhere',
+      where: { inventory: `"${this.inventoryId}"` },
     });
   },
   computed: {
@@ -80,7 +84,7 @@ export default {
       return this.$store.getters['inventories/getData'](this.inventoryId);
     },
     products() {
-      return this.$store.getters['products/getResources'];
+      return this.$store.getters['products/data'];
     },
   },
   methods: {

@@ -57,7 +57,7 @@ export default {
   },
   computed: {
     inventories() {
-      return this.$store.getters['inventories/data']('');
+      return this.$store.getters['inventories/data'];
     },
     loading() {
       return this.$store.getters['inventories/isLoading'];
