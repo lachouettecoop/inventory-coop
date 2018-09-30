@@ -18,10 +18,15 @@ const onError = (key, commit, error, reject) => {
 };
 
 const getActions = key => ({
-  getResources({ commit }) {
+  getResources({ commit }, { where }) {
+    let url = `${process.env.apiBaseUrl}/${key}`;
+    if (where) {
+      url += `? ${where}`;
+    }
+    console.log('getActions: ', url);
     commit('setDataLoading', true);
     return new Promise((resolve, reject) => {
-      axios.get(`${process.env.apiBaseUrl}/${key}`)
+      axios.get(url)
         .then(({ data }) => {
           commit('setResources', data);
           commit('setDataLoading', false);
@@ -61,20 +66,20 @@ const getActions = key => ({
         });
     });
   },
-  updateResource({ commit }, { id, etag, resource }) {
+  updateResource({ commit }, { resource, payload }) {
     commit('setDataLoading', true);
     commit('setPendingResource', { type: 'update', data: resource });
     return new Promise((resolve, reject) => {
       axios({
-        method: 'put',
-        url: `${process.env.apiBaseUrl}/${key}/${id}`,
+        method: 'patch',
+        url: `${process.env.apiBaseUrl}/${key}/${resource.id}`,
         responseType: 'json',
-        headers: { 'If-Match': etag },
-        data: resource,
+        headers: { 'If-Match': resource.etag },
+        data: payload,
       })
         .then(({ data }) => {
           commit('setDataLoading', false);
-          commit('updateResource', { resource, data });
+          commit('updateResource', { resource, data, payload });
           commit('setPendingResource');
           resolve(data);
         })
@@ -135,12 +140,12 @@ const mutations = {
     state.data.unshift(item);
   },
   updateResource(state, data) {
+    const item = Object.assign(data.resource, data.data, data.payload);
     const index = findIndex(
       state.data,
-      x => x.id === data.data._id, // eslint-disable-line no-underscore-dangle
+      x => x.id === item.id,
     );
     if (index !== -1) {
-      const item = Object.assign(state.data[index], data.resource, data.data);
       state.data.splice(index, 1, item);
     }
   },

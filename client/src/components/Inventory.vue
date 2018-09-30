@@ -2,19 +2,26 @@
   <v-layout column v-if="inventory">
     <v-flex>
       <v-card raw>
-        <v-btn fab small right absolute
-               @click="deactive()">
-          <v-icon>fas fa-stop-circle</v-icon>
-        </v-btn>
         <v-card-text>
-          <span class="grey--text">{{ inventory.date }}</span>
-          <span class="indigo--text">{{ inventory.active }}</span>
+          <span class="headline">Inventaire du {{ inventory.date }}</span>
+          <div class="right">
+            <v-btn small right
+                   v-if="inventory.status<2"
+                   @click="changeStatus()">
+              <template v-if="inventory.status==0">
+                Activer
+              </template>
+              <template v-else>
+                Arreter
+              </template>
+            </v-btn>
+          </div>
         </v-card-text>
       </v-card>
     </v-flex>
     <v-flex>
       <v-card>
-        <input type="file" ref="file" style="display: none">
+        <input type="file" ref="file" style="display: none" accept=".csv" @change="parseFile">
         <v-btn fab small right absolute
                @click="$refs.file.click()">
           <v-icon>fas fa-file-import</v-icon>
@@ -40,6 +47,15 @@
 </template>
 
 <script>
+import Papa from 'papaparse';
+import { isEmpty, findIndex } from 'lodash';
+
+const ODOO_ID_COLUMN = 'product_variant_ids/product_variant_ids/id';
+const NAME_COLUMN = 'name';
+const BARCODE_COLUMN = 'barcode';
+const QTY_COLOMN = 'product_variant_ids/qty_available';
+const BULH_SIZE = 100;
+
 export default {
   name: 'Inventory',
   data() {
@@ -50,7 +66,7 @@ export default {
       ],
     };
   },
-  mounted() {
+  created() {
     this.$store.dispatch({
       type: 'inventories/fetchResource',
       id: this.inventoryId,
@@ -68,12 +84,66 @@ export default {
     },
   },
   methods: {
-    deactive() {
+    changeStatus() {
       this.$store.dispatch({
         type: 'inventories/updateResource',
-        id: this.inventoryId,
-        etag: this.inventory.inventory,
-        resource: { active: false },
+        resource: this.inventory,
+        payload: { status: this.inventory.status + 1 },
+      });
+    },
+    parseFile(e) {
+      Papa.parse(e.target.files[0], {
+        complete: (results) => {
+          const nameIndex = findIndex(
+            results.data[0],
+            x => x === NAME_COLUMN,
+          );
+          const barcodeIndex = findIndex(
+            results.data[0],
+            x => x === BARCODE_COLUMN,
+          );
+          const qtyIndex = findIndex(
+            results.data[0],
+            x => x === QTY_COLOMN,
+          );
+          const odooIdIndex = findIndex(
+            results.data[0],
+            x => x === ODOO_ID_COLUMN,
+          );
+          if (nameIndex < 0 || barcodeIndex < 0 || qtyIndex < 0 || odooIdIndex < 0) {
+            // TODO raise error
+            return;
+          }
+          let productList = [];
+          for (let i = 1; i < results.data.length; i += 1) {
+            const name = results.data[i][nameIndex];
+            const barcode = results.data[i][barcodeIndex];
+            let qty = Number(results.data[i][qtyIndex]);
+            const odooId = results.data[i][odooIdIndex];
+            if (!isEmpty(name) && !isEmpty(odooId) && !isEmpty(barcode)) {
+              if (!qty) {
+                qty = 0;
+              }
+              productList.push({
+                name,
+                barcode,
+                qty: Number(qty),
+                odoo_id: odooId,
+                inventory: this.inventory.id,
+              });
+            }
+            if (productList.length >= BULH_SIZE || i === results.data.length - 1) {
+              this.$store.dispatch({
+                type: 'products/createResource',
+                resource: productList,
+              });
+              productList = [];
+            }
+          }
+        },
+        error: (error) => {
+          // TODO raise error
+        },
       });
     },
   },

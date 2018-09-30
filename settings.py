@@ -22,14 +22,23 @@ DATE_FORMAT = "%Y-%m-%d"
 ETAG = 'etag'
 ITEMS = 'items'
 
+INITIATED = 0
+ACTIVE = 1
+CLOSED = 2
+
 inventories = {
     'item_title': 'Inventory',
     'schema': {
         'date': {
             'type': 'datetime',
         },
-        'active': {
-            'type': 'boolean',
+        'status': {
+            'type': 'integer',
+            'allowed': [
+                INITIATED,
+                ACTIVE,
+                CLOSED,
+            ]
         },
     },
 }
@@ -44,6 +53,9 @@ products = {
         },
         'odoo_id': {
             'type': 'string',
+        },
+        'qty': {
+            'type': 'number',
         },
         'inventory': {
             'type': 'objectid',

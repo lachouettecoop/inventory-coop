@@ -27,7 +27,7 @@
               <div>
                 <v-btn fab small
                        @click="jumpToInventoryDetails(inventory)">
-                  <v-icon v-if="inventory.active"
+                  <v-icon v-if="inventory.status<2"
                           color="indigo darken-1">
                     fas fa-edit
                   </v-icon>
@@ -57,7 +57,7 @@ export default {
   },
   computed: {
     inventories() {
-      return this.$store.getters['inventories/data'];
+      return this.$store.getters['inventories/data']('');
     },
     loading() {
       return this.$store.getters['inventories/isLoading'];
@@ -77,7 +77,7 @@ export default {
       const date = `${yyyy}-${mm}-${dd}`;
       const resource = {
         date,
-        active: true,
+        status: 0,
       };
       this.$store.dispatch({
         type: 'inventories/createResource',
