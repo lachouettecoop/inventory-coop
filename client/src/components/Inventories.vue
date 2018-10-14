@@ -36,10 +36,29 @@
                     fas fa-eye
                   </v-icon>
                 </v-btn>
-                <v-btn fab small
-                       @click="removeInventory(inventory)">
-                  <v-icon color="red lighten-2">fas fa-trash</v-icon>
-                </v-btn>
+                <v-dialog v-model="dialog" persistent max-width="290">
+                  <v-btn fab small
+                         slot="activator">
+                    <v-icon color="red lighten-2">fas fa-trash</v-icon>
+                  </v-btn>
+                  <v-card>
+                    <v-card-text>
+                      Ceci supprimera l'inventaire et tous les comptes associés.
+                      Êtes-vous sur de vouloir continuer ?
+                    </v-card-text>
+                    <v-card-actions>
+                      <v-btn color="grey" flat
+                             @click.native="dialog=false">
+                        Annuler
+                      </v-btn>
+                      <v-spacer/>
+                      <v-btn color="red lighten-2" flat
+                             @click="removeInventory(inventory)">
+                        Confirmer
+                      </v-btn>
+                    </v-card-actions>
+                  </v-card>
+                </v-dialog>
               </div>
             </v-list-tile>
           </template>
@@ -52,6 +71,11 @@
 <script>
 export default {
   name: 'Inventories',
+  data() {
+    return {
+      dialog: false,
+    };
+  },
   created() {
     this.$store.dispatch('inventories/getResources');
   },
@@ -89,6 +113,7 @@ export default {
         type: 'inventories/deleteResource',
         resource: inventory,
       });
+      this.dialog = false;
     },
   },
 };

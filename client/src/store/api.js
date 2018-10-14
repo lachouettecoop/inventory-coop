@@ -1,13 +1,18 @@
 import axios from 'axios';
-import { reduce, findIndex, find } from 'lodash';
+import { filter, find, forEach, isArray, reduce } from 'lodash';
+
+const MAX_RESULTS = 50;
 
 const getters = {
   data: state => state.data,
+  getInventoryData: state => (inventoryId) => {
+    state.data; // eslint-disable-line no-unused-expressions
+    return filter(state.data, { inventory: inventoryId });
+  },
   getData: state => (id) => {
     state.data; // eslint-disable-line no-unused-expressions
     return find(state.data, ['id', id]);
   },
-  pendingEntity: state => state.pendingResource,
   isLoading: state => state.loading,
 };
 
@@ -17,33 +22,35 @@ const onError = (key, commit, error, reject) => {
   reject(error);
 };
 
+const get = (key, commit, resolve, reject, url, params, page = 1) => {
+  axios.get(`${url}`, {
+    params: { ...params, ...{ max_results: MAX_RESULTS, page } },
+  })
+    .then(({ data }) => {
+      commit('setResources', data);
+      if (data.meta.total > MAX_RESULTS * page) {
+        get(key, commit, resolve, reject, url, params, page + 1);
+      } else {
+        commit('setDataLoading', false);
+        resolve(data);
+      }
+    })
+    .catch((error) => {
+      onError(key, commit, error, reject);
+    });
+};
+
 const getActions = key => ({
   getResources({ commit }) {
     commit('setDataLoading', true);
     return new Promise((resolve, reject) => {
-      axios.get(`${process.env.apiBaseUrl}/${key}`)
-        .then(({ data }) => {
-          commit('setResources', data);
-          commit('setDataLoading', false);
-          resolve(data);
-        })
-        .catch((error) => {
-          onError(key, commit, error, reject);
-        });
+      get(key, commit, resolve, reject, `${process.env.apiBaseUrl}/${key}`, {});
     });
   },
   getResourcesWhere({ commit }, { where }) {
     commit('setDataLoading', true);
     return new Promise((resolve, reject) => {
-      axios.get(`${process.env.apiBaseUrl}/${key}?${JSON.stringify(where)}`)
-        .then(({ data }) => {
-          commit('setResources', data);
-          commit('setDataLoading', false);
-          resolve(data);
-        })
-        .catch((error) => {
-          onError(key, commit, error, reject);
-        });
+      get(key, commit, resolve, reject, `${process.env.apiBaseUrl}/${key}`, { where: JSON.stringify(where) });
     });
   },
   fetchResource({ commit }, { id }) {
@@ -60,24 +67,20 @@ const getActions = key => ({
   },
   createResource({ commit }, { resource }) {
     commit('setDataLoading', true);
-    commit('setPendingResource', { type: 'create', data: resource || key });
     return new Promise((resolve, reject) => {
       axios.post(`${process.env.apiBaseUrl}/${key}`, resource)
         .then(({ data }) => {
-          commit('addResource', { resource, data });
+          commit('addResource', data);
           commit('setDataLoading', false);
-          commit('setPendingResource');
           resolve(data);
         })
         .catch((error) => {
           onError(key, commit, error, reject);
-          commit('setPendingResource');
         });
     });
   },
   updateResource({ commit }, { resource, payload }) {
     commit('setDataLoading', true);
-    commit('setPendingResource', { type: 'update', data: resource });
     return new Promise((resolve, reject) => {
       axios({
         method: 'patch',
@@ -88,13 +91,11 @@ const getActions = key => ({
       })
         .then(({ data }) => {
           commit('setDataLoading', false);
-          commit('updateResource', { resource, data, payload });
-          commit('setPendingResource');
+          commit('updateResource', data);
           resolve(data);
         })
         .catch((error) => {
           onError(key, commit, error, reject);
-          commit('setPendingResource');
         });
     });
   },
@@ -130,42 +131,37 @@ const mutations = {
     state.loading = value;
   },
   setResources(state, data) {
-    state.data = data.items.map(obj => mapItem(obj));
+    forEach(data.items, (obj) => {
+      const item = mapItem(obj);
+      state.dataMap.set(item.id, item);
+    });
+    state.data = Array.from(state.dataMap.values());
   },
   setResource(state, data) {
     const item = mapItem(data);
-    const index = findIndex(
-      state.data,
-      x => x.id === item.id,
-    );
-    if (index !== -1) {
-      state.data.splice(index, 1, item);
-    } else {
-      state.data.splice(0, 0, item);
-    }
+    state.dataMap.set(item.id, item);
+    state.data = Array.from(state.dataMap.values());
   },
   addResource(state, data) {
-    const item = mapItem({ ...data.resource, ...data.data });
-    state.data.unshift(item);
+    if (isArray(data.items)) {
+      forEach(data.items, (obj) => {
+        const item = mapItem(obj);
+        state.dataMap.set(item.id, item);
+      });
+    } else {
+      const item = mapItem(data);
+      state.dataMap.set(item.id, item);
+    }
+    state.data = Array.from(state.dataMap.values());
   },
   updateResource(state, data) {
-    const item = Object.assign(data.resource, data.data, data.payload);
-    const index = findIndex(
-      state.data,
-      x => x.id === item.id,
-    );
-    if (index !== -1) {
-      state.data.splice(index, 1, item);
-    }
+    const item = mapItem(data);
+    state.dataMap.set(item.id, item);
+    state.data = Array.from(state.dataMap.values());
   },
   removeData(state, id) {
-    const index = findIndex(state.data, ['id', id]);
-    if (index !== -1) {
-      state.data.splice(index, 1);
-    }
-  },
-  setPendingResource(state, data) {
-    state.pendingResource = data;
+    state.dataMap.delete(id);
+    state.data = Array.from(state.dataMap.values());
   },
   setDataError(state, error) {
     state.error = error;
@@ -184,8 +180,8 @@ const apiModules = reduce(
       state: {
         loading: false,
         data: [],
-        pendingResource: null,
         error: null,
+        dataMap: new Map(),
       },
       getters,
       actions: getActions(resourceKey),

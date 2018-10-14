@@ -18,9 +18,11 @@ RESOURCE_METHODS = ['GET', 'POST', 'DELETE']
 # (defaults to read-only item access).
 ITEM_METHODS = ['GET', 'PATCH', 'PUT', 'DELETE']
 
+BANDWIDTH_SAVER = False
 DATE_FORMAT = "%Y-%m-%d"
 ETAG = 'etag'
 ITEMS = 'items'
+META = 'meta'
 
 INITIATED = 0
 ACTIVE = 1
@@ -54,7 +56,7 @@ products = {
         'odoo_id': {
             'type': 'string',
         },
-        'qty': {
+        'qty_in_odoo': {
             'type': 'number',
         },
         'inventory': {
@@ -76,8 +78,8 @@ counts = {
         'zone': {
             'type': 'string',
         },
-        'nb': {
-            'type': 'integer',
+        'qty': {
+            'type': 'number',
         },
         'product': {
             'type': 'objectid',
