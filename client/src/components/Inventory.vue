@@ -1,21 +1,28 @@
 <template>
   <v-layout column v-if="inventory">
     <v-flex>
-      <v-card raw>
+      <v-card>
         <v-card-text>
-          <span class="headline">Inventaire du {{ inventory.date }}</span>
-          <div class="right">
-            <v-btn small right
-                   v-if="inventory.status<2"
-                   @click="changeStatus()">
-              <template v-if="inventory.status==0">
-                Activer
-              </template>
-              <template v-else>
-                Arreter
-              </template>
-            </v-btn>
-          </div>
+          <v-container fluid>
+            <v-layout raw>
+              <v-layout align-center justify-start row fill-height>
+                <span class="headline">Inventaire du {{ inventory.date }}</span>
+              </v-layout>
+              <v-layout align-center justify-end row fill-height>
+                <v-switch label="Refresh" v-model="refreshCounts" color="blue"></v-switch>
+                <v-btn small
+                       v-if="inventory.status<2"
+                       @click="changeStatus()">
+                  <template v-if="inventory.status==0">
+                    Activer
+                  </template>
+                  <template v-else>
+                    Arreter
+                  </template>
+                </v-btn>
+              </v-layout>
+            </v-layout>
+          </v-container>
         </v-card-text>
       </v-card>
     </v-flex>
@@ -53,18 +60,29 @@
                 >
                   <p>{{ header.text }}</p>
                 </th>
+                <th></th>
               </tr>
             </template>
             <template slot="items" slot-scope="props">
               <td class="text-xs-left" width="30%">{{ props.item.name }}</td>
               <td class="text-xs-left">{{ props.item.barcode }}</td>
-              <td class="text-xs-left">{{ props.item.qty_in_odoo }}</td>
+              <td class="text-xs-center">{{ props.item.qty_in_odoo }}</td>
               <td :class="productClass(props.item)">{{ props.item.errOdoo }}</td>
               <td :class="productClass(props.item)">{{ props.item.errCount }}</td>
               <td v-for="(counterAtZone, index) in countersAtZone"
                   :key="index"
                   :class="productClass(props.item)">
-                {{ props.item[counterAtZone] }}
+                <v-text-field background-color="blue-grey lighten-5"
+                              @input="changeCounts(props.item)"
+                              v-model="props.item[counterAtZone]">
+                </v-text-field>
+              </td>
+              <td>
+                <v-btn color="success"
+                       :disabled="!props.item.modified"
+                       @click="saveCount(props.item)">
+                  Save
+                </v-btn>
               </td>
             </template>
           </v-data-table>
@@ -76,12 +94,13 @@
 
 <script>
 import Papa from 'papaparse';
-import { clone, isEmpty, findIndex, forEach, trim } from 'lodash';
+import { clone, isEmpty, findIndex, get, trim } from 'lodash';
 
 const ODOO_ID_COLUMN = 'product_variant_ids/product_variant_ids/id';
 const NAME_COLUMN = 'name';
 const BARCODE_COLUMN = 'barcode';
 const QTY_COLOMN = 'product_variant_ids/qty_available';
+const SEPARATOR = ' - ';
 
 export default {
   name: 'Inventory',
@@ -102,6 +121,8 @@ export default {
         message: '',
         type: 'error',
       },
+      productsAndCounts: [],
+      refreshCounts: false,
       interval: null,
     };
   },
@@ -118,6 +139,25 @@ export default {
   },
   beforeDestroy() {
     clearInterval(this.interval);
+  },
+  watch: {
+    refreshCounts(status) {
+      if (status) {
+        this.interval = setInterval(this.loadCounts, 5000);
+      } else {
+        clearInterval(this.interval);
+      }
+    },
+    products() {
+      this.initProductAndCounts();
+      this.updateProductsAndCounts();
+    },
+    counts() {
+      if (isEmpty(this.productsAndCounts)) {
+        this.initProductAndCounts();
+      }
+      this.updateProductsAndCounts();
+    },
   },
   computed: {
     inventoryId() {
@@ -138,24 +178,9 @@ export default {
     countersAtZone() {
       const countersAtZone = new Set();
       this.counts.forEach((count) => {
-        countersAtZone.add(`${count.counter}@${count.zone}`);
+        countersAtZone.add(`${count.zone}${SEPARATOR}${count.counter}`);
       });
-      return [...countersAtZone];
-    },
-    zonesAndCounters() {
-      const zonesAndCounters = new Map();
-      this.counts.forEach((count) => {
-        zonesAndCounters[`${count.zone}@${count.counter}`] = { zone: count.zone, counter: count.counter };
-      });
-      return [...zonesAndCounters.values()].sort((a, b) => {
-        if (a.zone < b.zone || (a.zone === b.zone && a.counter < b.counter)) {
-          return -1;
-        }
-        if (a.zone > b.zone || (a.zone === b.zone && a.counter > b.counter)) {
-          return 1;
-        }
-        return 0;
-      });
+      return [...countersAtZone].sort();
     },
     headers() {
       const headers = [
@@ -173,64 +198,20 @@ export default {
         })),
       );
     },
-    productsAndCounts() {
-      const productsAndCounts = [];
-      this.products.forEach((product) => {
-        const productAndCounts = clone(product);
-        productAndCounts.zones = [];
-        productAndCounts.errCount = 0;
-        productAndCounts.errOdoo = 0;
-        const counts = this.counts.filter(count => count.product === product.id);
-        counts.forEach((count) => {
-          let zoneIndex = findIndex(productAndCounts.zones, { name: count.zone });
-          if (zoneIndex < 0) {
-            zoneIndex = productAndCounts.zones.push({ name: count.zone, counts: [] }) - 1;
-          }
-          let countIndex = findIndex(productAndCounts.zones[zoneIndex].counts, {
-            counter: count.counter,
-          });
-          if (countIndex < 0) {
-            countIndex = productAndCounts.zones[zoneIndex].counts.push({
-              counter: count.counter,
-              qty: count.qty,
-            }) - 1;
-          } else {
-            productAndCounts.zones[zoneIndex].counts[countIndex].qty += count.qty;
-          }
-          productAndCounts[`${count.counter}@${count.zone}`] =
-            productAndCounts.zones[zoneIndex].counts[countIndex].qty;
-        });
-        productsAndCounts.push(productAndCounts);
-      });
-      productsAndCounts.forEach((productAndCounts) => {
-        let qty = 0;
-        forEach(productAndCounts.zones, (zone) => {
-          let qtyByZone = -1;
-          forEach(zone.counts, (count) => {
-            if (qtyByZone < 0) {
-              qtyByZone = count.qty;
-            } else if (qtyByZone !== count.qty) {
-              productAndCounts.errCount += // eslint-disable-line no-param-reassign
-                Math.abs(qtyByZone - count.qty);
-            }
-          });
-          if (qtyByZone >= 0) {
-            qty += qtyByZone;
-          }
-        });
-        if (qty !== productAndCounts.qty_in_odoo) {
-          productAndCounts.errOdoo = // eslint-disable-line no-param-reassign
-            Math.abs(qty - productAndCounts.qty_in_odoo);
-        }
-      });
-      return productsAndCounts;
-    },
   },
   methods: {
     loadCounts() {
+      const where = { inventory: `${this.inventoryId}` };
+      if (!isEmpty(this.lastUpdatedCount)) {
+        where.updated = { $gte: `${this.lastUpdatedCount}` };
+      }
       this.$store.dispatch({
         type: 'counts/getResourcesWhere',
-        where: { inventory: `${this.inventoryId}` },
+        where,
+      }).catch((reason) => {
+        this.alert.message = reason;
+        this.alert.show = true;
+        clearInterval(this.interval);
       });
     },
     changeStatus() {
@@ -242,29 +223,13 @@ export default {
     },
     productClass(product) {
       if (product.errCount > 0) {
-        return 'text-xs-left red lighten-3';
+        return 'text-xs-center red lighten-3';
       } else if (product.errOdoo > 0) {
-        return 'text-xs-left amber lighten-4';
+        return 'text-xs-center amber lighten-4';
       } else if (!isEmpty(product.zones)) {
-        return 'text-xs-left green lighten-4';
+        return 'text-xs-center green lighten-4';
       }
-      return 'text-xs-left';
-    },
-    getQty(zoneAndCounter, productAndCounts) {
-      const zoneIndex = findIndex(
-        productAndCounts.zones,
-        { name: zoneAndCounter.zone },
-      );
-      if (zoneIndex >= 0) {
-        const countIndex = findIndex(
-          productAndCounts.zones[zoneIndex].counts,
-          { counter: zoneAndCounter.counter },
-        );
-        if (countIndex >= 0) {
-          return productAndCounts.zones[zoneIndex].counts[countIndex].qty;
-        }
-      }
-      return '';
+      return 'text-xs-center';
     },
     changeSort(column) {
       if (this.pagination.sortBy === column) {
@@ -273,6 +238,142 @@ export default {
         this.pagination.sortBy = column;
         this.pagination.descending = false;
       }
+    },
+    unjoinCounterAtZone(counterAtZone) {
+      const result = counterAtZone.split(SEPARATOR);
+      return {
+        zone: result[0],
+        counter: result[1],
+      };
+    },
+    changeCounts(productAndCounts) {
+      let modified = false;
+      this.countersAtZone.forEach((counterAtZone) => {
+        const counter = this.unjoinCounterAtZone(counterAtZone).counter;
+        const zoneName = this.unjoinCounterAtZone(counterAtZone).zone;
+        const zoneIndex = findIndex(productAndCounts.zones, { name: zoneName });
+        const qty = +get(productAndCounts, counterAtZone, 0);
+        if (zoneIndex < 0) {
+          modified = modified || (qty !== 0);
+        } else {
+          const zone = productAndCounts.zones[zoneIndex];
+          const countIndex = findIndex(zone.counts, { counter });
+          if (countIndex < 0) {
+            modified = modified || (qty !== 0);
+          } else if (qty !== zone.counts[countIndex].qty) {
+            modified = true;
+          }
+        }
+      });
+      this.updateErrors(productAndCounts);
+      productAndCounts.modified = modified; // eslint-disable-line no-param-reassign
+    },
+    saveCount(productAndCounts) {
+      const counts = [];
+      this.countersAtZone.forEach((counterAtZone) => {
+        const qty = +get(productAndCounts, counterAtZone, 0);
+        const counter = this.unjoinCounterAtZone(counterAtZone).counter;
+        const zoneName = this.unjoinCounterAtZone(counterAtZone).zone;
+        const zoneIndex = findIndex(productAndCounts.zones, { name: zoneName });
+        if (zoneIndex < 0 && qty > 0) {
+          counts.push({ counter, zone: zoneName, qty });
+        } else if (zoneIndex >= 0) {
+          const zone = productAndCounts.zones[zoneIndex];
+          const countIndex = findIndex(zone.counts, { counter });
+          if (countIndex < 0 && qty > 0) {
+            counts.push({ counter, zone: zoneName, qty });
+          } else if (countIndex >= 0) {
+            const count = zone.counts[countIndex];
+            if (qty !== count.qty) {
+              counts.push({ counter, zone: zoneName, qty: qty - count.qty });
+            }
+          }
+        }
+      });
+      if (!isEmpty(counts)) {
+        this.$store.dispatch({
+          type: 'counts/createResource',
+          resource: counts.map(count => ({
+            counter: count.counter,
+            zone: count.zone,
+            qty: count.qty,
+            product: productAndCounts.id,
+            inventory: productAndCounts.inventory,
+          })),
+        }).then(() => {
+          this.changeCounts(productAndCounts);
+        });
+      }
+    },
+    initProductAndCounts() {
+      this.productsAndCounts = [];
+      this.lastUpdatedCount = '';
+      this.products.forEach((product) => {
+        const productAndCounts = clone(product);
+        productAndCounts.zones = [];
+        productAndCounts.errCount = 0;
+        productAndCounts.errOdoo = 0;
+        productAndCounts.modified = false;
+        this.productsAndCounts.push(productAndCounts);
+      });
+    },
+    updateErrors(productAndCounts) {
+      productAndCounts.errCount = 0; // eslint-disable-line no-param-reassign
+      let totalQty = 0;
+      productAndCounts.zones.forEach((zone) => {
+        let zoneQty = 0;
+        let firstLoop = true;
+        zone.counts.forEach((count) => {
+          if (firstLoop) {
+            zoneQty = count.qty;
+            firstLoop = false;
+          } else if (zoneQty !== count.qty) {
+            productAndCounts.errCount = // eslint-disable-line no-param-reassign
+              Math.max(productAndCounts.errCount, Math.abs(zoneQty - count.qty));
+          }
+        });
+        totalQty += zoneQty;
+      });
+      if (totalQty !== productAndCounts.qty_in_odoo) {
+        productAndCounts.errOdoo = // eslint-disable-line no-param-reassign
+          Math.abs(totalQty - productAndCounts.qty_in_odoo);
+      }
+    },
+    updateProductsAndCounts() {
+      const updatedProductsAndCounts = [];
+      let lastUpdatedCount = this.lastUpdatedCount;
+      this.counts.forEach((count) => {
+        if (count.updated > this.lastUpdatedCount) {
+          const productIndex = findIndex(this.productsAndCounts, { id: count.product });
+          if (productIndex >= 0) {
+            const productAndCounts = this.productsAndCounts[productIndex];
+            let zoneIndex = findIndex(productAndCounts.zones, { name: count.zone });
+            if (zoneIndex < 0) {
+              zoneIndex = productAndCounts.zones.push({ name: count.zone, counts: [] }) - 1;
+            }
+            const zone = this.productsAndCounts[productIndex].zones[zoneIndex];
+            let countIndex = findIndex(zone.counts, { counter: count.counter });
+            if (countIndex < 0) {
+              countIndex = zone.counts.push({ counter: count.counter, qty: count.qty }) - 1;
+            } else {
+              zone.counts[countIndex].qty += count.qty;
+            }
+            productAndCounts[`${count.zone}${SEPARATOR}${count.counter}`] = zone.counts[countIndex].qty;
+            if (count.updated > lastUpdatedCount) {
+              // eslint-disable-next-line vue/no-side-effects-in-computed-properties
+              lastUpdatedCount = count.updated;
+            }
+            updatedProductsAndCounts.push(productAndCounts);
+          }
+        } else {
+          // TODO ERROR
+        }
+      });
+      this.lastUpdatedCount = lastUpdatedCount;
+
+      updatedProductsAndCounts.forEach((productAndCounts) => {
+        this.updateErrors(productAndCounts);
+      });
     },
     parseFile(e) {
       Papa.parse(e.target.files[0], {
@@ -336,23 +437,20 @@ export default {
 
 <style scoped>
   .verticalTableHeader {
-    text-align:center;
-    white-space:nowrap;
+    text-align: center;
+    white-space: nowrap;
     transform: rotate(90deg) !important;
   }
   .verticalTableHeader p {
-    margin:0 -999px;/* virtually reduce space needed on width to very little */
-    display:inline-block;
+    margin: 0 -999px;/* virtually reduce space needed on width to very little */
+    display: inline-block;
   }
   .verticalTableHeader p:before {
-    content:'';
-    width:0;
-    padding-top:110%;
+    content: '';
+    width: 0;
+    padding-top: 110%;
     /* takes width as reference, + 10% for faking some extra padding */
-    display:inline-block;
-    vertical-align:middle;
-  }
-  table {
-    text-align:center;
+    display: inline-block;
+    vertical-align: middle;
   }
 </style>

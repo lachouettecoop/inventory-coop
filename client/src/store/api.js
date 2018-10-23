@@ -1,8 +1,6 @@
 import axios from 'axios';
 import { filter, find, forEach, isArray, reduce } from 'lodash';
 
-const MAX_RESULTS = 50;
-
 const getters = {
   data: state => state.data,
   getInventoryData: state => (inventoryId) => {
@@ -22,35 +20,35 @@ const onError = (key, commit, error, reject) => {
   reject(error);
 };
 
-const get = (key, commit, resolve, reject, url, params, page = 1) => {
-  axios.get(`${url}`, {
-    params: { ...params, ...{ max_results: MAX_RESULTS, page } },
-  })
-    .then(({ data }) => {
-      commit('setResources', data);
-      if (data.meta.total > MAX_RESULTS * page) {
-        get(key, commit, resolve, reject, url, params, page + 1);
-      } else {
-        commit('setDataLoading', false);
-        resolve(data);
-      }
-    })
-    .catch((error) => {
-      onError(key, commit, error, reject);
-    });
-};
-
 const getActions = key => ({
   getResources({ commit }) {
     commit('setDataLoading', true);
     return new Promise((resolve, reject) => {
-      get(key, commit, resolve, reject, `${process.env.apiBaseUrl}/${key}`, {});
+      axios.get(`${process.env.apiBaseUrl}/${key}`)
+        .then(({ data }) => {
+          commit('setResources', data);
+          commit('setDataLoading', false);
+          resolve(data);
+        })
+        .catch((error) => {
+          onError(key, commit, error, reject);
+        });
     });
   },
   getResourcesWhere({ commit }, { where }) {
     commit('setDataLoading', true);
     return new Promise((resolve, reject) => {
-      get(key, commit, resolve, reject, `${process.env.apiBaseUrl}/${key}`, { where: JSON.stringify(where) });
+      axios.get(`${process.env.apiBaseUrl}/${key}`, {
+        params: { where: JSON.stringify(where) },
+      })
+        .then(({ data }) => {
+          commit('setResources', data);
+          commit('setDataLoading', false);
+          resolve(data);
+        })
+        .catch((error) => {
+          onError(key, commit, error, reject);
+        });
     });
   },
   fetchResource({ commit }, { id }) {
@@ -120,43 +118,32 @@ const getActions = key => ({
   },
 });
 
-const mapItem = (obj) => {
-  const rObj = obj;
-  rObj.id = obj._id; // eslint-disable-line no-underscore-dangle
-  return rObj;
-};
-
 const mutations = {
   setDataLoading(state, value) {
     state.loading = value;
   },
   setResources(state, data) {
-    forEach(data.items, (obj) => {
-      const item = mapItem(obj);
+    forEach(data.items, (item) => {
       state.dataMap.set(item.id, item);
     });
     state.data = Array.from(state.dataMap.values());
   },
   setResource(state, data) {
-    const item = mapItem(data);
-    state.dataMap.set(item.id, item);
+    state.dataMap.set(data.id, data);
     state.data = Array.from(state.dataMap.values());
   },
   addResource(state, data) {
     if (isArray(data.items)) {
-      forEach(data.items, (obj) => {
-        const item = mapItem(obj);
+      forEach(data.items, (item) => {
         state.dataMap.set(item.id, item);
       });
     } else {
-      const item = mapItem(data);
-      state.dataMap.set(item.id, item);
+      state.dataMap.set(data.id, data);
     }
     state.data = Array.from(state.dataMap.values());
   },
   updateResource(state, data) {
-    const item = mapItem(data);
-    state.dataMap.set(item.id, item);
+    state.dataMap.set(data.id, data);
     state.data = Array.from(state.dataMap.values());
   },
   removeData(state, id) {

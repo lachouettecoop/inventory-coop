@@ -92,20 +92,9 @@ export default {
       this.$router.push({ name: 'Inventory', params: { id: inventory.id } });
     },
     addInventory() {
-      const today = new Date();
-      let dd = today.getDate();
-      let mm = today.getMonth() + 1;
-      const yyyy = today.getFullYear();
-      if (dd < 10) { dd = `0${dd}`; }
-      if (mm < 10) { mm = `0${mm}`; }
-      const date = `${yyyy}-${mm}-${dd}`;
-      const resource = {
-        date,
-        status: 0,
-      };
       this.$store.dispatch({
         type: 'inventories/createResource',
-        resource,
+        resource: {},
       });
     },
     removeInventory(inventory) {
@@ -120,5 +109,4 @@ export default {
 </script>
 
 <style scoped>
-
 </style>

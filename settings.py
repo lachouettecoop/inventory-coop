@@ -3,9 +3,10 @@ import os
 # We want to seamlessy run our API both locally and on Heroku. If running on
 # Heroku, sensible DB connection settings are stored in environment variables.
 MONGO_URI = os.environ.get('MONGODB_URI', 'mongodb://user:user@localhost:27017/inventory-coop')
+HATEOAS = False
+PAGINATION = False
 URL_PREFIX = 'api'
 API_VERSION = 'v1'
-
 X_DOMAINS = '*'
 X_HEADERS = ['Authorization', 'Content-type', 'If-Match']
 
@@ -19,10 +20,13 @@ RESOURCE_METHODS = ['GET', 'POST', 'DELETE']
 ITEM_METHODS = ['GET', 'PATCH', 'PUT', 'DELETE']
 
 BANDWIDTH_SAVER = False
-DATE_FORMAT = "%Y-%m-%d"
+DATE_CREATED = 'created'
+DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
 ETAG = 'etag'
 ITEMS = 'items'
 META = 'meta'
+LAST_UPDATED = 'updated'
+STATUS = 'status'
 
 INITIATED = 0
 ACTIVE = 1
