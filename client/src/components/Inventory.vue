@@ -96,13 +96,14 @@
                 </span>
                 <v-text-field v-else
                               background-color="blue-grey lighten-5"
+                              :disabled="inventory.state>=2"
                               @input="changeCounts(props.item)"
                               v-model="props.item[counterAtZone]">
                 </v-text-field>
               </td>
               <td>
                 <v-btn color="success"
-                       :disabled="!props.item.modified"
+                       :disabled="!props.item.modified || inventory.state>=2"
                        @click="saveCount(props.item)">
                   Save
                 </v-btn>
