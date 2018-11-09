@@ -27,7 +27,7 @@
               <div>
                 <v-btn fab small
                        @click="jumpToInventoryDetails(inventory)">
-                  <v-icon v-if="inventory.status<2"
+                  <v-icon v-if="inventory.state<2"
                           color="indigo darken-1">
                     fas fa-edit
                   </v-icon>

@@ -38,7 +38,7 @@ inventories = {
         'date': {
             'type': 'datetime',
         },
-        'status': {
+        'state': {
             'type': 'integer',
             'allowed': [
                 INITIATED,

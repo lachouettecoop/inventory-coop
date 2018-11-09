@@ -55,6 +55,7 @@ export default {
   margin-top: 60px;
 }
 .v-input input {
+  min-width: 20px;
   text-align: center;
 }
 </style>

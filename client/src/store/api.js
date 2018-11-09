@@ -24,15 +24,15 @@ const getActions = key => ({
   getResources({ commit }) {
     commit('setDataLoading', true);
     return new Promise((resolve, reject) => {
-      axios.get(`${process.env.apiBaseUrl}/${key}`)
-        .then(({ data }) => {
-          commit('setResources', data);
-          commit('setDataLoading', false);
-          resolve(data);
-        })
-        .catch((error) => {
-          onError(key, commit, error, reject);
-        });
+      axios.get(
+        `${process.env.apiBaseUrl}/${key}`,
+      ).then(({ data }) => {
+        commit('setResources', data);
+        commit('setDataLoading', false);
+        resolve(data);
+      }).catch((error) => {
+        onError(key, commit, error, reject);
+      });
     });
   },
   getResourcesWhere({ commit }, { where }) {
@@ -40,41 +40,40 @@ const getActions = key => ({
     return new Promise((resolve, reject) => {
       axios.get(`${process.env.apiBaseUrl}/${key}`, {
         params: { where: JSON.stringify(where) },
-      })
-        .then(({ data }) => {
-          commit('setResources', data);
-          commit('setDataLoading', false);
-          resolve(data);
-        })
-        .catch((error) => {
-          onError(key, commit, error, reject);
-        });
+      }).then(({ data }) => {
+        commit('setResources', data);
+        commit('setDataLoading', false);
+        resolve(data);
+      }).catch((error) => {
+        onError(key, commit, error, reject);
+      });
     });
   },
   fetchResource({ commit }, { id }) {
     commit('setDataLoading', true);
-    axios.get(`${process.env.apiBaseUrl}/${key}/${id}`)
-      .then(({ data }) => {
-        commit('setResource', data);
-        commit('setDataLoading', false);
-      })
-      .catch((error) => {
-        commit('setDataError', error);
-        commit('setDataLoading', false);
-      });
+    axios.get(
+      `${process.env.apiBaseUrl}/${key}/${id}`,
+    ).then(({ data }) => {
+      commit('setResource', data);
+      commit('setDataLoading', false);
+    }).catch((error) => {
+      commit('setDataError', error);
+      commit('setDataLoading', false);
+    });
   },
   createResource({ commit }, { resource }) {
     commit('setDataLoading', true);
     return new Promise((resolve, reject) => {
-      axios.post(`${process.env.apiBaseUrl}/${key}`, resource)
-        .then(({ data }) => {
-          commit('addResource', data);
-          commit('setDataLoading', false);
-          resolve(data);
-        })
-        .catch((error) => {
-          onError(key, commit, error, reject);
-        });
+      axios.post(
+        `${process.env.apiBaseUrl}/${key}`,
+        resource,
+      ).then(({ data }) => {
+        commit('addResource', data);
+        commit('setDataLoading', false);
+        resolve(data);
+      }).catch((error) => {
+        onError(key, commit, error, reject);
+      });
     });
   },
   updateResource({ commit }, { resource, payload }) {
@@ -86,15 +85,13 @@ const getActions = key => ({
         responseType: 'json',
         headers: { 'If-Match': resource.etag },
         data: payload,
-      })
-        .then(({ data }) => {
-          commit('setDataLoading', false);
-          commit('updateResource', data);
-          resolve(data);
-        })
-        .catch((error) => {
-          onError(key, commit, error, reject);
-        });
+      }).then(({ data }) => {
+        commit('setDataLoading', false);
+        commit('updateResource', data);
+        resolve(data);
+      }).catch((error) => {
+        onError(key, commit, error, reject);
+      });
     });
   },
   deleteResource({ commit }, { resource }) {
@@ -105,15 +102,13 @@ const getActions = key => ({
         url: `${process.env.apiBaseUrl}/${key}/${resource.id}`,
         responseType: 'json',
         headers: { 'If-Match': resource.etag },
-      })
-        .then(() => {
-          commit('setDataLoading', false);
-          commit('removeData', resource.id);
-          resolve();
-        })
-        .catch((error) => {
-          onError(key, commit, error, reject);
-        });
+      }).then(() => {
+        commit('setDataLoading', false);
+        commit('removeData', resource.id);
+        resolve();
+      }).catch((error) => {
+        onError(key, commit, error, reject);
+      });
     });
   },
 });

@@ -9,17 +9,35 @@
                 <span class="headline">Inventaire du {{ inventory.date }}</span>
               </v-layout>
               <v-layout align-center justify-end row fill-height>
-                <v-switch label="Refresh" v-model="refreshCounts" color="blue"></v-switch>
                 <v-btn small
-                       v-if="inventory.status<2"
-                       @click="changeStatus()">
-                  <template v-if="inventory.status==0">
-                    Activer
-                  </template>
-                  <template v-else>
-                    Arreter
-                  </template>
+                       v-if="inventory.state==1"
+                       :disabled="someErrorInCounts"
+                       @click="changeState(2)">
+                  Arreter
                 </v-btn>
+                <v-btn small
+                       v-if="inventory.state==2"
+                       @click="changeState(1)">
+                  Reactiver
+                </v-btn>
+              </v-layout>
+            </v-layout>
+          </v-container>
+        </v-card-text>
+      </v-card>
+    </v-flex>
+    <v-flex>
+      <v-card>
+        <v-card-text>
+          <v-container fluid>
+            <v-layout raw>
+              <v-layout align-center justify-end row fill-height>
+                <v-switch label="Refresh" v-model="refreshCounts" color="blue"></v-switch>
+                <v-checkbox v-for="(zone, index) in zones"
+                            :key="index"
+                            :label="zone.name"
+                            v-model="zone.show"
+                ></v-checkbox>
               </v-layout>
             </v-layout>
           </v-container>
@@ -33,6 +51,7 @@
       <v-card>
         <input type="file" ref="file" style="display: none" accept=".csv" @change="parseFile">
         <v-btn fab small right absolute
+               v-if="inventory.state==0"
                @click="$refs.file.click()">
           <v-icon>fas fa-file-import</v-icon>
         </v-btn>
@@ -67,12 +86,16 @@
               <td class="text-xs-left" width="30%">{{ props.item.name }}</td>
               <td class="text-xs-left">{{ props.item.barcode }}</td>
               <td class="text-xs-center">{{ props.item.qty_in_odoo }}</td>
-              <td :class="productClass(props.item)">{{ props.item.errOdoo }}</td>
-              <td :class="productClass(props.item)">{{ props.item.errCount }}</td>
-              <td v-for="(counterAtZone, index) in countersAtZone"
+              <td :class="errorOdooClass(props.item)">{{ props.item.errOdoo }}</td>
+              <td v-for="(counterAtZone, index) in valuesToDisplay()"
                   :key="index"
-                  :class="productClass(props.item)">
-                <v-text-field background-color="blue-grey lighten-5"
+                  :class="productClass(props.item, counterAtZone)">
+                <span v-if="isThisAnError(counterAtZone)"
+                      class="font-weight-bold">
+                  {{ props.item[counterAtZone] }}
+                </span>
+                <v-text-field v-else
+                              background-color="blue-grey lighten-5"
                               @input="changeCounts(props.item)"
                               v-model="props.item[counterAtZone]">
                 </v-text-field>
@@ -94,13 +117,14 @@
 
 <script>
 import Papa from 'papaparse';
-import { clone, isEmpty, findIndex, get, trim } from 'lodash';
+import { clone, includes, isEmpty, findIndex, get, sortBy, trim } from 'lodash';
 
 const ODOO_ID_COLUMN = 'product_variant_ids/product_variant_ids/id';
 const NAME_COLUMN = 'name';
 const BARCODE_COLUMN = 'barcode';
 const QTY_COLOMN = 'product_variant_ids/qty_available';
 const SEPARATOR = ' - ';
+const ERROR = 'Erreur';
 
 export default {
   name: 'Inventory',
@@ -122,6 +146,8 @@ export default {
         type: 'error',
       },
       productsAndCounts: [],
+      someErrorInCounts: false,
+      zones: [],
       refreshCounts: false,
       interval: null,
     };
@@ -175,28 +201,21 @@ export default {
     isLoading() {
       return this.$store.getters['products/isLoading'];
     },
-    countersAtZone() {
-      const countersAtZone = new Set();
-      this.counts.forEach((count) => {
-        countersAtZone.add(`${count.zone}${SEPARATOR}${count.counter}`);
-      });
-      return [...countersAtZone].sort();
-    },
     headers() {
       const headers = [
         { text: 'Nom', value: 'name', class: 'column sortable text-xs-left' },
         { text: 'Barcode', value: 'barcode', class: 'column sortable text-xs-left' },
-        { text: 'Quantité', value: 'qty_in_odoo', class: 'column sortable verticalTableHeader' },
+        { text: 'Quantité théorique', value: 'qty_in_odoo', class: 'column sortable verticalTableHeader' },
         { text: 'Ecart avec Odoo', value: 'errOdoo', class: 'column sortable verticalTableHeader' },
-        { text: 'Ecart entre conteur', value: 'errCount', class: 'column sortable verticalTableHeader' },
       ];
-      return headers.concat(
-        this.countersAtZone.map(conterAtZone => ({
-          text: conterAtZone,
-          value: conterAtZone,
+      this.valuesToDisplay().forEach((value) => {
+        headers.push({
+          text: value,
+          value,
           class: 'column sortable verticalTableHeader',
-        })),
-      );
+        });
+      });
+      return headers;
     },
   },
   methods: {
@@ -214,19 +233,28 @@ export default {
         clearInterval(this.interval);
       });
     },
-    changeStatus() {
+    changeState(state) {
       this.$store.dispatch({
         type: 'inventories/updateResource',
         resource: this.inventory,
-        payload: { status: this.inventory.status + 1 },
+        payload: { state },
       });
     },
-    productClass(product) {
-      if (product.errCount > 0) {
-        return 'text-xs-center red lighten-3';
-      } else if (product.errOdoo > 0) {
-        return 'text-xs-center amber lighten-4';
-      } else if (!isEmpty(product.zones)) {
+    errorOdooClass(product) {
+      if (product.errOdoo > 0) {
+        return 'text-xs-center font-weight-bold amber lighten-4';
+      }
+      return 'text-xs-center font-weight-bold';
+    },
+    productClass(product, counterAtZone) {
+      const zone = this.unjoinCounterAtZone(counterAtZone).zone;
+      const zoneIndex = findIndex(product.zones, { name: zone });
+      if (zoneIndex >= 0) {
+        if (product.zones[zoneIndex].errCount > 0) {
+          return 'text-xs-center red lighten-3';
+        }
+      }
+      if (!isEmpty(product.zones)) {
         return 'text-xs-center green lighten-4';
       }
       return 'text-xs-center';
@@ -248,47 +276,49 @@ export default {
     },
     changeCounts(productAndCounts) {
       let modified = false;
-      this.countersAtZone.forEach((counterAtZone) => {
-        const counter = this.unjoinCounterAtZone(counterAtZone).counter;
-        const zoneName = this.unjoinCounterAtZone(counterAtZone).zone;
-        const zoneIndex = findIndex(productAndCounts.zones, { name: zoneName });
-        const qty = +get(productAndCounts, counterAtZone, 0);
-        if (zoneIndex < 0) {
-          modified = modified || (qty !== 0);
-        } else {
-          const zone = productAndCounts.zones[zoneIndex];
-          const countIndex = findIndex(zone.counts, { counter });
-          if (countIndex < 0) {
+      this.zones.forEach((zone) => {
+        zone.counters.forEach((counter) => {
+          const counterAtZone = `${zone.name}${SEPARATOR}${counter.name}`;
+          const zoneIndex = findIndex(productAndCounts.zones, { name: zone.name });
+          const qty = +get(productAndCounts, counterAtZone, 0);
+          if (zoneIndex < 0) {
             modified = modified || (qty !== 0);
-          } else if (qty !== zone.counts[countIndex].qty) {
-            modified = true;
+          } else {
+            const countIndex = findIndex(productAndCounts.zones[zoneIndex].counts,
+              { counter: counter.name });
+            if (countIndex < 0) {
+              modified = modified || (qty !== 0);
+            } else if (qty !== productAndCounts.zones[zoneIndex].counts[countIndex].qty) {
+              modified = true;
+            }
           }
-        }
+        });
       });
       this.updateErrors(productAndCounts);
       productAndCounts.modified = modified; // eslint-disable-line no-param-reassign
     },
     saveCount(productAndCounts) {
       const counts = [];
-      this.countersAtZone.forEach((counterAtZone) => {
-        const qty = +get(productAndCounts, counterAtZone, 0);
-        const counter = this.unjoinCounterAtZone(counterAtZone).counter;
-        const zoneName = this.unjoinCounterAtZone(counterAtZone).zone;
-        const zoneIndex = findIndex(productAndCounts.zones, { name: zoneName });
-        if (zoneIndex < 0 && qty > 0) {
-          counts.push({ counter, zone: zoneName, qty });
-        } else if (zoneIndex >= 0) {
-          const zone = productAndCounts.zones[zoneIndex];
-          const countIndex = findIndex(zone.counts, { counter });
-          if (countIndex < 0 && qty > 0) {
-            counts.push({ counter, zone: zoneName, qty });
-          } else if (countIndex >= 0) {
-            const count = zone.counts[countIndex];
-            if (qty !== count.qty) {
-              counts.push({ counter, zone: zoneName, qty: qty - count.qty });
+      this.zones.forEach((zone) => {
+        zone.counters.forEach((counter) => {
+          const counterAtZone = `${zone.name}${SEPARATOR}${counter.name}`;
+          const qty = +get(productAndCounts, counterAtZone, 0);
+          const zoneIndex = findIndex(productAndCounts.zones, { name: zone.name });
+          if (zoneIndex < 0 && qty > 0) {
+            counts.push({ counter: counter.name, zone: zone.name, qty });
+          } else if (zoneIndex >= 0) {
+            const countIndex = findIndex(productAndCounts.zones[zoneIndex].counts,
+              { counter: counter.name });
+            if (countIndex < 0 && qty > 0) {
+              counts.push({ counter, zone: zone.name, qty });
+            } else if (countIndex >= 0) {
+              const count = productAndCounts.zones[zoneIndex].counts[countIndex];
+              if (qty !== count.qty) {
+                counts.push({ counter: counter.name, zone: zone.name, qty: qty - count.qty });
+              }
             }
           }
-        }
+        });
       });
       if (!isEmpty(counts)) {
         this.$store.dispatch({
@@ -306,21 +336,21 @@ export default {
       }
     },
     initProductAndCounts() {
+      this.zones = [];
       this.productsAndCounts = [];
       this.lastUpdatedCount = '';
       this.products.forEach((product) => {
         const productAndCounts = clone(product);
         productAndCounts.zones = [];
-        productAndCounts.errCount = 0;
-        productAndCounts.errOdoo = 0;
+        productAndCounts.errOdoo = null;
         productAndCounts.modified = false;
         this.productsAndCounts.push(productAndCounts);
       });
     },
     updateErrors(productAndCounts) {
-      productAndCounts.errCount = 0; // eslint-disable-line no-param-reassign
       let totalQty = 0;
       productAndCounts.zones.forEach((zone) => {
+        zone.errCount = null; // eslint-disable-line no-param-reassign
         let zoneQty = 0;
         let firstLoop = true;
         zone.counts.forEach((count) => {
@@ -328,10 +358,11 @@ export default {
             zoneQty = count.qty;
             firstLoop = false;
           } else if (zoneQty !== count.qty) {
-            productAndCounts.errCount = // eslint-disable-line no-param-reassign
-              Math.max(productAndCounts.errCount, Math.abs(zoneQty - count.qty));
+            zone.errCount = // eslint-disable-line no-param-reassign
+              Math.max(zone.errCount, Math.abs(zoneQty - count.qty));
           }
         });
+        productAndCounts[`${zone.name}${SEPARATOR}${ERROR}`] = zone.errCount; // eslint-disable-line no-param-reassign
         totalQty += zoneQty;
       });
       if (totalQty !== productAndCounts.qty_in_odoo) {
@@ -345,6 +376,7 @@ export default {
       this.counts.forEach((count) => {
         if (count.updated > this.lastUpdatedCount) {
           const productIndex = findIndex(this.productsAndCounts, { id: count.product });
+          // productsAndCounts update
           if (productIndex >= 0) {
             const productAndCounts = this.productsAndCounts[productIndex];
             let zoneIndex = findIndex(productAndCounts.zones, { name: count.zone });
@@ -364,9 +396,10 @@ export default {
               lastUpdatedCount = count.updated;
             }
             updatedProductsAndCounts.push(productAndCounts);
+          } else {
+            // TODO ERROR
           }
-        } else {
-          // TODO ERROR
+          this.updateZones(count);
         }
       });
       this.lastUpdatedCount = lastUpdatedCount;
@@ -374,6 +407,43 @@ export default {
       updatedProductsAndCounts.forEach((productAndCounts) => {
         this.updateErrors(productAndCounts);
       });
+
+      this.someErrorInCounts = findIndex(
+        this.productsAndCounts,
+        product => findIndex(
+          product.zones,
+          zone => zone.errCount > 0,
+        ) >= 0,
+      ) >= 0;
+    },
+    updateZones(count) {
+      let zoneIndex = findIndex(this.zones, { name: count.zone });
+      if (zoneIndex < 0) {
+        zoneIndex = this.zones.push({ name: count.zone, show: true, counters: [] }) - 1;
+      }
+      const counterIndex = findIndex(this.zones[zoneIndex].counters, { name: count.counter });
+      if (counterIndex < 0) {
+        this.zones[zoneIndex].counters.push({ name: count.counter });
+      }
+      this.zones = sortBy(this.zones, ['name']);
+      this.zones.forEach((zone) => {
+        zone.counters = sortBy(zone.counters, ['name']); // eslint-disable-line no-param-reassign
+      });
+    },
+    valuesToDisplay() {
+      const values = [];
+      this.zones.forEach((zone) => {
+        if (zone.show) {
+          zone.counters.forEach((counter) => {
+            values.push(`${zone.name}${SEPARATOR}${counter.name}`);
+          });
+          values.push(`${zone.name}${SEPARATOR}${ERROR}`);
+        }
+      });
+      return values;
+    },
+    isThisAnError(value) {
+      return includes(value, `${SEPARATOR}${ERROR}`);
     },
     parseFile(e) {
       Papa.parse(e.target.files[0], {
@@ -420,6 +490,8 @@ export default {
           this.$store.dispatch({
             type: 'products/createResource',
             resource: productList,
+          }).then(() => {
+            this.changeState(1);
           });
         },
         error: (error) => {
