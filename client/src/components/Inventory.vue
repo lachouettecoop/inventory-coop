@@ -55,6 +55,11 @@
                @click="$refs.file.click()">
           <v-icon>fas fa-file-import</v-icon>
         </v-btn>
+        <v-btn fab small right absolute
+               v-if="inventory.state==2"
+               @click="saveFile()">
+          <v-icon>fas fa-file-export</v-icon>
+        </v-btn>
         <v-card-title class="title">
           <span>Liste des produits</span>
         </v-card-title>
@@ -123,7 +128,7 @@ import { clone, includes, isEmpty, findIndex, get, sortBy, trim } from 'lodash';
 const ODOO_ID_COLUMN = 'product_variant_ids/product_variant_ids/id';
 const NAME_COLUMN = 'name';
 const BARCODE_COLUMN = 'barcode';
-const QTY_COLOMN = 'product_variant_ids/qty_available';
+const QTY_COLUMN = 'product_variant_ids/qty_available';
 const SEPARATOR = ' - ';
 const ERROR = 'Erreur';
 
@@ -311,7 +316,7 @@ export default {
             const countIndex = findIndex(productAndCounts.zones[zoneIndex].counts,
               { counter: counter.name });
             if (countIndex < 0 && qty > 0) {
-              counts.push({ counter, zone: zone.name, qty });
+              counts.push({ counter: counter.name, zone: zone.name, qty });
             } else if (countIndex >= 0) {
               const count = productAndCounts.zones[zoneIndex].counts[countIndex];
               if (qty !== count.qty) {
@@ -459,7 +464,7 @@ export default {
           );
           const qtyIndex = findIndex(
             results.data[0],
-            x => x === QTY_COLOMN,
+            x => x === QTY_COLUMN,
           );
           const odooIdIndex = findIndex(
             results.data[0],
@@ -503,6 +508,50 @@ export default {
           };
         },
       });
+    },
+    saveFile() {
+      const filename = 'inventory.csv';
+      const data = [];
+      this.productsAndCounts.forEach((productAndCounts) => {
+        if (!isEmpty(productAndCounts.zones)) {
+          let qty = 0;
+          productAndCounts.zones.forEach((zone) => {
+            if (!isEmpty(zone.counts)) {
+              qty += zone.counts[0].qty;
+            }
+          });
+          data.push([
+            productAndCounts.name,
+            productAndCounts.barcode,
+            productAndCounts.odoo_id,
+            qty,
+          ]);
+        }
+      });
+      const csvData = Papa.unparse({
+        fields: [
+          NAME_COLUMN,
+          BARCODE_COLUMN,
+          ODOO_ID_COLUMN,
+          'qty',
+        ],
+        data,
+      });
+      const file = new Blob([csvData], { type: 'text/plain;charset=utf-8' });
+      if (window.navigator.msSaveOrOpenBlob) { // IE10+
+        window.navigator.msSaveOrOpenBlob(file, filename);
+      } else { // Others
+        const a = document.createElement('a');
+        const url = URL.createObjectURL(file);
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(url);
+        }, 0);
+      }
     },
   },
 };
