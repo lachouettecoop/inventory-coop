@@ -1,9 +1,9 @@
-version: '3.4'
+version: '3.5'
 
 services:
   db:
     image: mongo
-    restart: always
+    restart: unless-stopped
     ports:
     - 27017:27017
     environment:
@@ -11,12 +11,14 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: example
     volumes:
     - ./volumes/db:/data/db
+    networks:
+    - backend
 
   api:
     image: inventory-coop
+    restart: unless-stopped
     build:
       context: .
-      network: host
     environment:
       MONGODB_URI: mongodb://user:user@db:27017/inventory-coop
     volumes:
@@ -25,3 +27,11 @@ services:
     - 8000:80/tcp
     depends_on:
       - db
+    networks:
+    - frontend
+    - backend
+
+networks:
+  frontend:
+    name: inventory_coop_frontend
+  backend:

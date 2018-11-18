@@ -1,21 +1,8 @@
 from bson import ObjectId
 from eve import Eve
-from flask import abort, jsonify, render_template
+from flask import abort, jsonify
 
 from settings import CLOSED, DATE_FORMAT
-
-
-def post_delete_inventories_callback(request, _):
-    db = app.data.driver.db
-    col_products = db["products"]
-
-    query = {"inventory": ObjectId(request.view_args['_id'])}
-    x = col_products.delete_many(query)
-    print(x.deleted_count, " products deleted.")
-
-    col_counts = db["counts"]
-    x = col_counts.delete_many(query)
-    print(x.deleted_count, " counts deleted.")
 
 
 def on_fetched_item_event(_, response):
@@ -57,7 +44,7 @@ def on_insert_counts_event(items):
 app = Eve(__name__,
           static_folder='./client/dist/static',
           template_folder='./client/dist')
-app.on_post_DELETE_inventories += post_delete_inventories_callback
+
 app.on_fetched_item += on_fetched_item_event
 app.on_fetched_resource += on_fetched_resource_event
 app.on_inserted += on_inserted_event
@@ -66,17 +53,12 @@ app.on_insert_inventories += on_insert_inventories_event
 app.on_insert_counts += on_insert_counts_event
 
 
-@app.route('/ping')
-def hello():
+@app.route('/api/v1/ping')
+def ping():
     return jsonify({
         'name': 'inventory-coop',
         'status': 'ok'
     })
-
-
-@app.route('/')
-def index():
-    return render_template("index.html")
 
 
 if __name__ == '__main__':

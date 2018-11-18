@@ -20,8 +20,9 @@ RESOURCE_METHODS = ['GET', 'POST', 'DELETE']
 ITEM_METHODS = ['GET', 'PATCH', 'PUT', 'DELETE']
 
 BANDWIDTH_SAVER = False
-DATE_CREATED = 'created'
+SOFT_DELETE = True
 DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
+DATE_CREATED = 'created'
 ETAG = 'etag'
 ITEMS = 'items'
 META = 'meta'
