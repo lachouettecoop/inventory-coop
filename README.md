@@ -1,8 +1,24 @@
-# Init mongodb
+# Inventory COOP API
+This is the backend of inventory solution.
+The other products are :
+- Frontend (https://github.com/lachouettecoop/inventory-coop-client.git)
+- Android application (https://github.com/lachouettecoop/inventory-coop-android.git)
+
+### Requirement
+You will need :
+- docker
+- docker-compose
+
+It could make your life better:
+- Pycharm (Python IDE)
+- Postman (test API)
+- Robot3t (MongoDb explorer)
+
+### Init mongodb
 Fistly, as root user, create a database `inventory-coop`
 Then execute command :
 
-```bash
+```
 db.createUser({
   user: "user",
   pwd: "...",
