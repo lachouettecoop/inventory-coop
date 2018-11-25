@@ -8,3 +8,7 @@ volumes/
 
 # Pycharm project file
 .idea/
+
+# DOcker environment files
+api.env
+db.env

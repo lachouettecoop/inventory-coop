@@ -1,8 +1,11 @@
 import os
 
-# We want to seamlessy run our API both locally and on Heroku. If running on
-# Heroku, sensible DB connection settings are stored in environment variables.
-MONGO_URI = os.environ.get('MONGODB_URI', 'mongodb://user:user@localhost:27017/inventory-coop')
+MONGO_HOST = 'localhost'
+MONGO_PORT = 27017
+MONGO_USERNAME = os.environ.get('MONGO_USERNAME')
+MONGO_PASSWORD = os.environ.get('MONGO_PASSWORD')
+MONGO_DBNAME = 'inventory-coop'
+
 HATEOAS = False
 PAGINATION = False
 URL_PREFIX = 'api'

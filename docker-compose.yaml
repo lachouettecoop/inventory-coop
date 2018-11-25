@@ -6,32 +6,21 @@ services:
     restart: unless-stopped
     ports:
     - 27017:27017
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: example
+    env_file:
+    - db.env
     volumes:
     - ./volumes/db:/data/db
-    networks:
-    - backend
 
   api:
     image: inventory-coop
     restart: unless-stopped
     build:
       context: .
-    environment:
-      MONGODB_URI: mongodb://user:user@db:27017/inventory-coop
+    env_file:
+    - api.env
     volumes:
     - .:/app
     ports:
     - 8000:80/tcp
     depends_on:
       - db
-    networks:
-    - frontend
-    - backend
-
-networks:
-  frontend:
-    name: inventory_coop_frontend
-  backend:
