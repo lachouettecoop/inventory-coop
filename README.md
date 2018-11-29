@@ -57,3 +57,12 @@ API will be accessible to http://localhost:8000/api/v1
 curl http://localhost:8000/api/v1/ping
 ```
 It shall respond `{"name":"inventory-coop","status":"ok"}`
+
+### Development
+This API is based on [python eve](http://docs.python-eve.org/en/latest/).
+```bash
+virtualenv -p /usr/bin/python3.6 .venv
+source .venv/bin/activate
+pip install -r ./requirements.txt
+python app.py
+```
