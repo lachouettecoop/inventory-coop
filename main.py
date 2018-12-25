@@ -1,8 +1,14 @@
+import os
+
 from bson import ObjectId
 from eve import Eve
-from flask import abort, jsonify
+from flask import abort
+from flask import jsonify
+from flask import send_file
 
-from settings import CLOSED, DATE_FORMAT
+from api.login import blueprint
+from api.login import JwtTokenAuth
+from api.settings import CLOSED, DATE_FORMAT
 
 
 def on_fetched_item_event(_, response):
@@ -42,8 +48,10 @@ def on_insert_counts_event(items):
 
 
 app = Eve(__name__,
-          static_folder='./client/dist/static',
-          template_folder='./client/dist')
+          auth=JwtTokenAuth,
+          static_folder='./client/dist/')
+
+app.register_blueprint(blueprint)
 
 app.on_fetched_item += on_fetched_item_event
 app.on_fetched_resource += on_fetched_resource_event
@@ -59,6 +67,26 @@ def ping():
         'name': 'inventory-coop',
         'status': 'ok'
     })
+
+
+@app.route("/")
+def main():
+    index_path = os.path.join(app.static_folder, 'index.html')
+    return send_file(index_path)
+
+
+# Everything not declared before (not a Flask route / API endpoint)...
+@app.route('/<path:path>')
+def route_frontend(path):
+    # ...could be a static file needed by the front end that
+    # doesn't use the `static` path (like in `<script src="bundle.js">`)
+    file_path = os.path.join(app.static_folder, path)
+    if os.path.isfile(file_path):
+        return send_file(file_path)
+    # ...or should be handled by the SPA's "router" in front end
+    else:
+        index_path = os.path.join(app.static_folder, 'index.html')
+        return send_file(index_path)
 
 
 if __name__ == '__main__':

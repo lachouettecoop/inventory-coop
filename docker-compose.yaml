@@ -11,16 +11,32 @@ services:
     volumes:
     - ./volumes/db:/data/db
 
-  api:
+  dev:
     image: inventory-coop
-    restart: unless-stopped
     build:
       context: .
     env_file:
     - api.env
+    environment:
+      STATIC_PATH: /app/client/dist/static
     volumes:
     - .:/app
     ports:
     - 8000:80/tcp
     depends_on:
     - db
+
+
+  api:
+    image: inventory-coop
+    restart: unless-stopped
+    build:
+      context: .
+    env_file:
+      - api.env
+    environment:
+      STATIC_PATH: /app/client/dist/static
+    ports:
+      - 8000:80/tcp
+    depends_on:
+      - db
