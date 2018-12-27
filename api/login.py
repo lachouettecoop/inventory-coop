@@ -11,6 +11,7 @@ from flask import request
 
 blueprint = Blueprint('login', __name__)
 
+ADMIN_USERS = ['papanowel@gmail.com', 'olivier@gmail.com']
 JWT_ALGORITHM = os.environ.get('JWT_ALGORITHM', 'HS256')
 JWT_EXPIRE_OFFSET = os.environ.get('JWT_EXPIRE_OFFSET', 60 * 60 * 12)  # 12H
 JWT_SECRET = os.environ.get('JWT_SECRET')
@@ -19,6 +20,17 @@ LDAP_BASE_DN = os.environ.get('LDAP_BASE_DN', 'cn=admin,dc=lachouettecoop,dc=fr'
 LDAP_SEARCH_DN = os.environ.get('LDAP_SEARCH_DN', 'dc=lachouettecoop,dc=fr')
 LDAP_USER_DN = os.environ.get('LDAP_USER_DN', 'cn={},ou=membres,o=lachouettecoop,dc=lachouettecoop,dc=fr')
 LDAP_ADMIN_PASS = os.environ.get('LDAP_ADMIN_PASS')
+
+
+class AuthorizationError(Exception):
+    """ A base class for exceptions used by bottle. """
+    pass
+
+
+def role(user):
+    if user in ADMIN_USERS:
+        return 'admin'
+    return 'chouettos'
 
 
 def build_profile(user):
@@ -31,9 +43,10 @@ def build_profile(user):
         return {'user': user,
                 'name': result[0][1]['sn'][0].decode('utf-8'),
                 'lastname': result[0][1]['description'][0].decode('utf-8'),
+                'role': role(user),
                 'exp': time.time() + JWT_EXPIRE_OFFSET}
     except Exception as e:
-        abort(403, 'Authentication failed for %s: %s' % (user, str(e)))
+        abort(403, f'Authentication failed for {user}: {str(e)}')
 
 
 @blueprint.route('/api/v1/login', methods=['POST'])
@@ -51,8 +64,79 @@ def login():
         ldap_connection.simple_bind_s(LDAP_USER_DN.format(user), password)
         ldap_connection.unbind_s()
     except Exception as e:
-        abort(403, 'Authentication failed for %s: %s' % (credentials['user'], str(e)))
+        abort(403, f'Authentication failed for {user}: {str(e)}')
     token = jwt.encode(build_profile(user), JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+    return jsonify({'token': token})
+
+
+def jwt_token_from_header():
+    auth = request.headers.get('Authorization', None)
+    if not auth:
+        raise AuthorizationError(
+            {'code': 'authorization_header_missing', 'description': 'Authorization header is expected'})
+
+    parts = auth.split()
+
+    if parts[0].lower() != 'bearer':
+        raise AuthorizationError(
+            {'code': 'invalid_header', 'description': 'Authorization header must start with Bearer'})
+    elif len(parts) == 1:
+        raise AuthorizationError({'code': 'invalid_header', 'description': 'Token not found'})
+    elif len(parts) > 2:
+        raise AuthorizationError(
+            {'code': 'invalid_header', 'description': 'Authorization header must be Bearer + \s + token'})
+
+    return parts[1]
+
+
+def requires_admin(f):
+    def decorated(*args, **kwargs):
+        try:
+            token = jwt_token_from_header()
+        except AuthorizationError as e:
+            abort(400, e)
+
+        try:
+            jwt.decode(token, JWT_SECRET)  # throw away value
+        except jwt.ExpiredSignature:
+            abort(401, {'code': 'token_expired', 'description': 'token is expired'})
+        except jwt.DecodeError as e:
+            abort(401, {'code': 'token_invalid', 'description': str(e)})
+
+        return f(*args, **kwargs)
+
+    return decorated
+
+
+def requires_auth(f):
+    def decorated(*args, **kwargs):
+        try:
+            token = jwt_token_from_header()
+        except AuthorizationError as e:
+            abort(400, e)
+
+        try:
+            jwt.decode(token, JWT_SECRET)  # throw away value
+        except jwt.ExpiredSignature:
+            abort(401, {'code': 'token_expired', 'description': 'token is expired'})
+        except jwt.DecodeError as e:
+            abort(401, {'code': 'token_invalid', 'description': str(e)})
+
+        return f(*args, **kwargs)
+
+    return decorated
+
+
+@blueprint.route('/api/v1/login/refresh', methods=['POST'])
+@requires_auth
+def refresh_token():
+    """refresh the current JWT"""
+    # get and decode the current token
+    token = jwt_token_from_header()
+    payload = jwt.decode(token, JWT_SECRET)
+    # create a new token with a new exp time
+    token = jwt.encode(build_profile(payload['user']), JWT_SECRET, algorithm=JWT_ALGORITHM)
 
     return jsonify({'token': token})
 
@@ -65,8 +149,12 @@ class JwtTokenAuth(TokenAuth):
         data stored on the DB.
         """
         try:
-            return jwt.decode(token, JWT_SECRET)  # throw away value
+            jwt_decoded =  jwt.decode(token, JWT_SECRET)  # throw away value
         except jwt.ExpiredSignature:
             abort(401, {'code': 'token_expired', 'description': 'token is expired'})
         except jwt.DecodeError as e:
             abort(401, {'code': 'token_invalid', 'description': str(e)})
+
+        if resource in ['inventories'] and method in ['POST', 'DELETE'] and jwt_decoded['role'] != 'admin':
+            abort(403, {'code': 'forbidden', 'description': 'this action requires admin rights'})
+        return jwt_decoded

@@ -5,27 +5,17 @@ services:
     image: mongo
     restart: unless-stopped
     ports:
-    - 27017:27017
+      - 27017:27017
     env_file:
     - db.env
     volumes:
-    - ./volumes/db:/data/db
-
-  dev:
-    image: inventory-coop
-    build:
-      context: .
-    env_file:
-    - api.env
-    environment:
-      STATIC_PATH: /app/client/dist/static
-    volumes:
-    - .:/app
-    ports:
-    - 8000:80/tcp
-    depends_on:
-    - db
-
+      - ./volumes/db:/data/db
+    labels:
+      traefik.docker.network: "inverseproxy_shared"
+      traefik.enable: "true"
+      traefik.frontend.passHostHeader: "true"
+      traefik.port: "80"
+      traefik.www.frontend.rule: "Host:inventaires.db.lachouettecoop.fr"
 
   api:
     image: inventory-coop
@@ -40,3 +30,9 @@ services:
       - 8000:80/tcp
     depends_on:
       - db
+    labels:
+      traefik.docker.network: "inverseproxy_shared"
+      traefik.enable: "true"
+      traefik.frontend.passHostHeader: "true"
+      traefik.port: "80"
+      traefik.www.frontend.rule: "Host:inventaires.lachouettecoop.fr"
