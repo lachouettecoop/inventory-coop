@@ -10,12 +10,6 @@ services:
     - db.env
     volumes:
       - ./volumes/db:/data/db
-    labels:
-      traefik.docker.network: "inverseproxy_shared"
-      traefik.enable: "true"
-      traefik.frontend.passHostHeader: "true"
-      traefik.port: "80"
-      traefik.www.frontend.rule: "Host:inventaires.db.lachouettecoop.fr"
 
   api:
     image: inventory-coop
