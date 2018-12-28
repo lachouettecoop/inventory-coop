@@ -1,4 +1,4 @@
-version: '3.5'
+version: '2.1'
 
 services:
   db:
@@ -22,8 +22,8 @@ services:
       STATIC_PATH: /app/client/dist/static
     ports:
       - 8000:80/tcp
-    depends_on:
-      - db
+    links:
+      - db:db
     labels:
       traefik.docker.network: "inverseproxy_shared"
       traefik.enable: "true"
