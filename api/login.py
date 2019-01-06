@@ -11,7 +11,7 @@ from flask import request
 
 blueprint = Blueprint('login', __name__)
 
-ADMIN_USERS = ['papanowel@gmail.com', 'olivier@gmail.com']
+ADMIN_USERS = os.environ.get('ADMIN_USERS', 'papanowel@gmail.com')
 JWT_ALGORITHM = os.environ.get('JWT_ALGORITHM', 'HS256')
 JWT_EXPIRE_OFFSET = os.environ.get('JWT_EXPIRE_OFFSET', 60 * 60 * 12)  # 12H
 JWT_SECRET = os.environ.get('JWT_SECRET')
@@ -28,7 +28,7 @@ class AuthorizationError(Exception):
 
 
 def role(user):
-    if user in ADMIN_USERS:
+    if user in [admin.strip() for admin in ADMIN_USERS.split(',')]:
         return 'admin'
     return 'chouettos'
 
