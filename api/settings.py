@@ -10,7 +10,6 @@ HATEOAS = False
 PAGINATION = False
 URL_PREFIX = 'api'
 API_VERSION = 'v1'
-X_DOMAINS = '*'
 X_HEADERS = ['Authorization', 'Content-type', 'If-Match']
 
 # Enable reads (GET), inserts (POST) and DELETE for resources/collections

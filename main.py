@@ -6,9 +6,13 @@ from flask import abort
 from flask import jsonify
 from flask import send_file
 
-from api.login import blueprint
+from api.login import blueprint as login_blueprint
 from api.login import JwtTokenAuth
-from api.settings import CLOSED, DATE_FORMAT
+from api.settings import CLOSED
+from api.settings import DATE_FORMAT
+from api.settings import ITEM_METHODS
+from api.settings import RESOURCE_METHODS
+from api.settings import X_HEADERS
 
 
 def on_fetched_item_event(_, response):
@@ -47,11 +51,15 @@ def on_insert_counts_event(items):
             abort(403)
 
 
-app = Eve(__name__,
-          auth=JwtTokenAuth,
-          static_folder='./client/dist/')
-
-app.register_blueprint(blueprint)
+NO_AUTH = os.environ.get('NO_AUTH', 'False').lower() in ['true', '1']
+if NO_AUTH:
+    app = Eve(__name__,
+              static_folder='./client/dist/')
+else:
+    app = Eve(__name__,
+              auth=JwtTokenAuth,
+              static_folder='./client/dist/')
+    app.register_blueprint(login_blueprint)
 
 app.on_fetched_item += on_fetched_item_event
 app.on_fetched_resource += on_fetched_resource_event
@@ -59,6 +67,15 @@ app.on_inserted += on_inserted_event
 app.on_updated += on_updated_event
 app.on_insert_inventories += on_insert_inventories_event
 app.on_insert_counts += on_insert_counts_event
+
+
+@app.after_request
+def allow_all_origins(response):
+    if os.environ.get('ALLOW_ALL_ORIGINS', 'False').lower() in ['true', '1']:
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Headers"] = ', '.join(X_HEADERS)
+        response.headers["Access-Control-Allow-Methods"] = ', '.join(set(ITEM_METHODS + RESOURCE_METHODS))
+    return response
 
 
 @app.route('/api/v1/ping')
