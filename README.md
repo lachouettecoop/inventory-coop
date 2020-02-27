@@ -61,7 +61,7 @@ It shall respond `{"name":"inventory-coop","status":"ok"}`
 ### Development
 This API is based on [python eve](http://docs.python-eve.org/en/latest/).
 ```bash
-virtualenv -p /usr/bin/python3.6 .venv
+virtualenv -p /usr/bin/python3.7 .venv
 source .venv/bin/activate
 pip install -r ./requirements.txt
 python app.py
