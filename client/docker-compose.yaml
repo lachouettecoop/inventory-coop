@@ -1,0 +1,10 @@
+version: '3.5'
+
+services:
+  client:
+    image: inventory-coop-client
+    restart: unless-stopped
+    build:
+      context: .
+    ports:
+    - 8080:80
