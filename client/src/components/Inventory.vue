@@ -33,17 +33,19 @@
           <v-container fluid>
             <v-layout raw>
               <v-layout align-left justify-end row fill-height>
-                <v-btn small
-                       v-if="inventory.state===1"
+                <v-btn v-if="inventory.state===1"
+                       color="primary"
                        @click="loadCounts()">
                   Rafraichir
                 </v-btn>
+                <v-spacer/>
                 <v-text-field label="Nom du produit ou Code barre"
                               prepend-icon="fas fa-search"
                               clearable
                               v-model="productFilter">
                 </v-text-field>
-                Zones:
+                <v-spacer/>
+                <span>Binôme(s):</span>
                 <v-checkbox v-for="(zone, index) in zones"
                             :key="index"
                             :label="zone.name"
