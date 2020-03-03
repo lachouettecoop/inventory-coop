@@ -1,0 +1,41 @@
+version: '2.1'
+
+services:
+  db:
+    image: mongo
+    restart: unless-stopped
+    env_file:
+    - db.env
+    networks:
+      default:
+    volumes:
+      - ./volumes/db:/data/db
+
+  api:
+    image: inventory-coop
+    restart: unless-stopped
+    build:
+      context: .
+    env_file:
+      - api.env
+    environment:
+      STATIC_PATH: /app/client/dist/static
+    networks:
+      default:
+      inverseproxy_shared:
+    links:
+      - db:db
+    labels:
+      traefik.docker.network: "inverseproxy_shared"
+      traefik.enable: "true"
+      traefik.frontend.passHostHeader: "true"
+      traefik.port: "80"
+      traefik.www.frontend.rule: "Host:inventaires.lachouettecoop.fr"
+
+networks:
+    default:
+      internal: true
+      driver_opts:
+        encrypted: 1
+    inverseproxy_shared:
+      external: true
