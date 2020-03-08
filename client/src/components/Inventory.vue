@@ -577,17 +577,20 @@ export default {
             }
           });
         }
-        data.push([
-          '',
-          '',
-          productAndCounts.odoo_id,
-          qty,
-          PRODUCT_UOM_VALUE,
-          LINE_LOCATION_VALUE,
-        ]);
+        if (qty !== productAndCounts.qty_in_odoo) {
+          // Only push product with disparity
+          data.push([
+            '',
+            '',
+            `__export__.product_product_${productAndCounts.odoo_id}`,
+            qty,
+            PRODUCT_UOM_VALUE,
+            LINE_LOCATION_VALUE,
+          ]);
+        }
       });
       data[0][0] = LOCATION_VALUE;
-      data[0][1] = `'${m.format('LLLL')}'`;
+      data[0][1] = `Inventaire ${m.format('LL')}`;
       const csvData = Papa.unparse({
         fields: [
           LOCATION_COLUMN,
