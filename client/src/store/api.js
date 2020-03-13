@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { filter, find, forEach, isArray, reduce } from 'lodash';
+import { filter, find, findIndex, forEach, isArray, reduce } from 'lodash';
 
 import serverUrl from '@/mixin/url';
 import authHeader from '@/mixin/authHeader';
@@ -141,9 +141,8 @@ const mutations = {
   },
   setResources(state, data) {
     forEach(data.items, (item) => {
-      state.dataMap.set(item.id, item);
+      state.data.push(item);
     });
-    state.data = Array.from(state.dataMap.values());
   },
   setResource(state, data) {
     state.dataMap.set(data.id, data);
@@ -161,7 +160,6 @@ const mutations = {
   },
   updateResource(state, data) {
     state.dataMap.set(data.id, data);
-    state.data = Array.from(state.dataMap.values());
   },
   removeData(state, id) {
     state.dataMap.delete(id);

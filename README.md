@@ -15,13 +15,22 @@ It could make your life better:
 - Robot3t (MongoDb explorer)
 
 ### Init mongodb
-Fistly, as root user, create a database `inventory-coop`
-Then execute command :
-
+Fist open a bash on your db instance
 ```
+docker-compose exec db bash
+```
+
+Then launch a mongo shell as root
+```
+mongo -u root -p <root password>
+``` 
+
+Finally execute command :
+```
+use inventory-coop
 db.createUser({
   user: "user",
-  pwd: "...",
+  pwd: "user",
   roles: [
     { role: "readWrite", db: "inventory-coop" },
   ],
@@ -45,7 +54,22 @@ MONGO_INITDB_ROOT_PASSWORD=...  # Root password
 API docker needs some environment variables defined in file api.env.
 ```bash
 MONGO_USERNAME=user
-MONGO_PASSWORD=...  # User password
+MONGO_PASSWORD=...              # User password
+
+NO_AUTH=False                   # Disable login with LDAP (default=False)
+ALLOW_ALL_ORIGINS=False         # Disable CORS (default=False).
+                                # You may need that if you run API and CLIENT separately (dev).
+
+ADMIN_USERS='bill@gate.com'     # List of users with admin rights
+LDAP_ADMIN_PASS=...             # LDAP admin password
+
+JWT_ALGORITHM=HS256             # JSON Web Tokens signature algorithm (default=HS256)
+JWT_EXPIRE_OFFSET=43200         # Token validity duration (default=43200)
+JWT_SECRET=...                  # Secret for JSON Web Tokens signature
+LDAP_SERVER=...                 # LDAP server URL (default=Chouettes COOP's one)
+LDAP_BASE_DN=...                # LDAP base distinguished name (default=Chouettes COOP's one)
+LDAP_SEARCH_DN=...              # LDAP search distinguished name (default=Chouettes COOP's one)
+LDAP_USER_DN=...                # LDAP user distinguished name (default=Chouettes COOP's one)
 ```
 Then run
 ```bash

@@ -33,12 +33,6 @@
           <v-container fluid>
             <v-layout raw>
               <v-layout align-left justify-end row fill-height>
-                <v-btn v-if="inventory.state===1"
-                       color="primary"
-                       @click="loadCounts()">
-                  Rafraichir
-                </v-btn>
-                <v-spacer/>
                 <v-text-field label="Nom du produit ou Code barre"
                               prepend-icon="fas fa-search"
                               clearable
@@ -161,7 +155,8 @@ export default {
   data() {
     return {
       pagination: {
-        sortBy: 'name',
+        sortBy: 'errOdoo',
+        descending: true,
       },
       row_per_page: [
         25, 50, 100,
@@ -192,7 +187,9 @@ export default {
       type: 'products/getResourcesWhere',
       where: { inventory: `${this.inventoryId}` },
     });
-    this.loadCounts();
+    this.interval = setInterval(() => {
+      this.loadCounts();
+    }, 2000); // refresh each 2s
   },
   beforeDestroy() {
     clearInterval(this.interval);

@@ -3,7 +3,6 @@ version: '2.1'
 services:
   db:
     image: mongo
-    restart: unless-stopped
     ports:
       - 27017:27017
     env_file:
@@ -13,7 +12,6 @@ services:
 
   api:
     image: inventory-coop
-    restart: unless-stopped
     build:
       context: .
     env_file:
@@ -24,9 +22,3 @@ services:
       - 8000:80/tcp
     links:
       - db:db
-    labels:
-      traefik.docker.network: "inverseproxy_shared"
-      traefik.enable: "true"
-      traefik.frontend.passHostHeader: "true"
-      traefik.port: "80"
-      traefik.www.frontend.rule: "Host:inventaires.lachouettecoop.fr"
