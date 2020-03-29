@@ -33,12 +33,6 @@
           <v-container fluid>
             <v-layout raw>
               <v-layout align-left justify-end row fill-height>
-                <v-btn v-if="inventory.state===1"
-                       color="primary"
-                       @click="loadCounts()">
-                  Rafraichir
-                </v-btn>
-                <v-spacer/>
                 <v-text-field label="Nom du produit ou Code barre"
                               prepend-icon="fas fa-search"
                               clearable
@@ -46,11 +40,18 @@
                 </v-text-field>
                 <v-spacer/>
                 <span>Equipe(s):</span>
-                <v-checkbox v-for="(zone, index) in zones"
-                            :key="index"
-                            :label="zone.name"
-                            v-model="zone.show">
-                </v-checkbox>
+                <v-radio-group
+                  v-model="radioGroup"
+                  row
+                  @change="changeZoneShow"
+                >
+                  <v-radio
+                    v-for="(zone, index) in [{name: 'Toutes'}].concat(zones)"
+                    :key="index"
+                    :label="zone.name"
+                    :value="zone.name"
+                  ></v-radio>
+                </v-radio-group>
               </v-layout>
             </v-layout>
           </v-container>
@@ -136,7 +137,7 @@
 
 <script>
 import Papa from 'papaparse';
-import { clone, includes, isEmpty, find, findIndex, get, sortBy, trim } from 'lodash';
+import { clone, includes, isEmpty, find, findIndex, forEach, get, sortBy, trim } from 'lodash';
 import moment from 'moment';
 
 const ODOO_ID_COLUMN = 'line_ids/product_id/id';
@@ -161,7 +162,8 @@ export default {
   data() {
     return {
       pagination: {
-        sortBy: 'name',
+        sortBy: 'errOdoo',
+        descending: true,
       },
       row_per_page: [
         25, 50, 100,
@@ -181,6 +183,7 @@ export default {
       interval: null,
       filtredProductsAndCounts: [],
       productFilter: '',
+      radioGroup: 'Toutes',
     };
   },
   created() {
@@ -192,7 +195,9 @@ export default {
       type: 'products/getResourcesWhere',
       where: { inventory: `${this.inventoryId}` },
     });
-    this.loadCounts();
+    this.interval = setInterval(() => {
+      this.loadCounts();
+    }, 5000); // refresh each 5s
   },
   beforeDestroy() {
     clearInterval(this.interval);
@@ -412,10 +417,8 @@ export default {
         productAndCounts[`${zone.name}${SEPARATOR}${ERROR}`] = zone.errCount; // eslint-disable-line no-param-reassign
         totalQty += zoneQty;
       });
-      if (totalQty !== productAndCounts.qty_in_odoo) {
-        productAndCounts.errOdoo = // eslint-disable-line no-param-reassign
+      productAndCounts.errOdoo = // eslint-disable-line no-param-reassign
           this.round(Math.abs(totalQty - productAndCounts.qty_in_odoo), 3);
-      }
     },
     updateProductsAndCounts() {
       const updatedProductsAndCounts = [];
@@ -504,6 +507,12 @@ export default {
           }
         });
       }
+    },
+    changeZoneShow(selectedZone) {
+      forEach(this.zones, (zone) => {
+        // eslint-disable-next-line no-param-reassign
+        zone.show = selectedZone === 'Toutes' || zone.name === selectedZone;
+      });
     },
     parseFile(e) {
       Papa.parse(e.target.files[0], {
