@@ -15,24 +15,6 @@ from api.settings import RESOURCE_METHODS
 from api.settings import X_HEADERS
 
 
-def on_fetched_item_event(_, response):
-    response['id'] = response['_id']
-
-
-def on_fetched_resource_event(_, response):
-    for item in response.get('items', []):
-        item['id'] = item['_id']
-
-
-def on_inserted_event(_, items):
-    for item in items:
-        item['id'] = item['_id']
-
-
-def on_updated_event(_, updates, original):
-    updates['id'] = original['_id']
-
-
 def on_insert_inventories_event(items):
     import datetime
     date = datetime.datetime.now().strftime(DATE_FORMAT)
@@ -61,10 +43,6 @@ else:
               static_folder='./client/dist/')
     app.register_blueprint(login_blueprint)
 
-app.on_fetched_item += on_fetched_item_event
-app.on_fetched_resource += on_fetched_resource_event
-app.on_inserted += on_inserted_event
-app.on_updated += on_updated_event
 app.on_insert_inventories += on_insert_inventories_event
 app.on_insert_counts += on_insert_counts_event
 

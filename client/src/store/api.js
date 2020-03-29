@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { filter, find, findIndex, forEach, isArray, reduce } from 'lodash';
+import { filter, find, forEach, isArray, isEmpty, reduce } from 'lodash';
 
 import serverUrl from '@/mixin/url';
 import authHeader from '@/mixin/authHeader';
@@ -24,19 +24,6 @@ const onError = (key, commit, error, reject) => {
 };
 
 const getActions = key => ({
-  login({ commit }) {
-    return new Promise((resolve, reject) => {
-      axios.post(
-        `${serverUrl()}/login`,
-      ).then(({ data }) => {
-        commit('setResources', data);
-        commit('setDataLoading', false);
-        resolve(data);
-      }).catch((error) => {
-        onError(key, commit, error, reject);
-      });
-    });
-  },
   getResources({ commit }) {
     commit('setDataLoading', true);
     return new Promise((resolve, reject) => {
@@ -75,7 +62,7 @@ const getActions = key => ({
         headers: authHeader(),
       },
     ).then(({ data }) => {
-      commit('setResource', data);
+      commit('setResources', data);
       commit('setDataLoading', false);
     }).catch((error) => {
       commit('setDataError', error);
@@ -90,7 +77,7 @@ const getActions = key => ({
         resource,
         { headers: authHeader() },
       ).then(({ data }) => {
-        commit('addResource', data);
+        commit('setResources', data);
         commit('setDataLoading', false);
         resolve(data);
       }).catch((error) => {
@@ -108,8 +95,8 @@ const getActions = key => ({
         headers: Object.assign({}, { 'If-Match': resource.etag }, authHeader()),
         data: payload,
       }).then(({ data }) => {
+        commit('setResources', data);
         commit('setDataLoading', false);
-        commit('updateResource', data);
         resolve(data);
       }).catch((error) => {
         onError(key, commit, error, reject);
@@ -135,31 +122,33 @@ const getActions = key => ({
   },
 });
 
+const setItem = (item, state, forcePush = false) => {
+  // eslint-disable-next-line no-param-reassign,no-underscore-dangle
+  item.id = item._id;
+  const existingItem = forcePush ? undefined : state.dataMap.get(item.id);
+  if (existingItem) {
+    forEach(Object.keys(item), (propertyName) => {
+      existingItem[propertyName] = item[propertyName];
+    });
+  } else {
+    state.dataMap.set(item.id, item);
+    state.data.push(item);
+  }
+};
+
 const mutations = {
   setDataLoading(state, value) {
     state.loading = value;
   },
   setResources(state, data) {
-    forEach(data.items, (item) => {
-      state.data.push(item);
-    });
-  },
-  setResource(state, data) {
-    state.dataMap.set(data.id, data);
-    state.data = Array.from(state.dataMap.values());
-  },
-  addResource(state, data) {
     if (isArray(data.items)) {
+      const forcePush = isEmpty(state.dataMap);
       forEach(data.items, (item) => {
-        state.dataMap.set(item.id, item);
+        setItem(item, state, forcePush);
       });
     } else {
-      state.dataMap.set(data.id, data);
+      setItem(data, state);
     }
-    state.data = Array.from(state.dataMap.values());
-  },
-  updateResource(state, data) {
-    state.dataMap.set(data.id, data);
   },
   removeData(state, id) {
     state.dataMap.delete(id);

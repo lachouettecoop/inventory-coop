@@ -30,7 +30,7 @@ Finally execute command :
 use inventory-coop
 db.createUser({
   user: "user",
-  pwd: "user",
+  pwd: "<user password>",
   roles: [
     { role: "readWrite", db: "inventory-coop" },
   ],
