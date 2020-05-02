@@ -1,22 +1,35 @@
 <template>
   <v-app id="app">
-    <v-toolbar app fixed height="38" flat color="primary" dark>
-      <v-breadcrumbs>
-        <v-breadcrumbs-item
-          v-for="(breadcrumb, index) in breadcrumbList"
-          :key="index"
-        >
-          <span class="white--text" @click="routeTo(index)">
-            {{ breadcrumb.name }}
-          </span>
-        </v-breadcrumbs-item>
+    <v-app-bar
+      app
+      color="primary"
+      dark
+      height="38"
+    >
+      <v-breadcrumbs :items="breadcrumbList">
+        <template v-slot:item="{ item }">
+          <v-breadcrumbs-item
+            id="breadcrumbs-item"
+          >
+            <a v-if="item.link"
+               class="white--text"
+               @click="routeTo(item)">
+              {{ item.name }}
+            </a>
+            <span v-else
+                  class="grey--text">
+              {{ item.name }}
+            </span>
+          </v-breadcrumbs-item>
+        </template>
       </v-breadcrumbs>
       <v-spacer></v-spacer>
       <v-btn v-if="this.$route.name!=='Login'"
-              small @click="logout()">
+             small @click="logout()">
         Logout
       </v-btn>
-    </v-toolbar>
+    </v-app-bar>
+
     <v-content>
       <v-container grid-list-xl>
         <router-view/>
@@ -26,24 +39,24 @@
 </template>
 
 <script>
-import { removeCookieToken } from '@/mixin/cookie';
+import { removeCookieToken } from './mixin/cookie';
 
 export default {
   name: 'App',
-  data() {
-    return {
-      breadcrumbList: [],
-    };
-  },
+  data: () => ({
+    breadcrumbList: [],
+  }),
   mounted() {
     this.updateBreadcrumbList();
   },
   watch: {
-    '$route'() { this.updateBreadcrumbList(); }, // eslint-disable-line object-shorthand
+    $route() {
+      this.updateBreadcrumbList();
+    }, // eslint-disable-line object-shorthand
   },
   methods: {
-    routeTo(index) {
-      if (this.breadcrumbList[index].link) this.$router.push(this.breadcrumbList[index].link);
+    routeTo(item) {
+      if (item.link) this.$router.push(item.link);
     },
     logout() {
       removeCookieToken();
@@ -64,6 +77,9 @@ export default {
   text-align: center;
   color: #2c3e50;
   margin-top: 60px;
+}
+#app .container{
+  max-width: 90%
 }
 .v-input input {
   min-width: 20px;

@@ -1,20 +1,22 @@
 import axios from 'axios';
-import { filter, find, forEach, isArray, isEmpty, reduce } from 'lodash';
+import {
+  filter, find, forEach, isArray, isEmpty, reduce,
+} from 'lodash';
 
 import serverUrl from '@/mixin/url';
 import authHeader from '@/mixin/authHeader';
 
 const getters = {
-  data: state => state.data,
-  getInventoryData: state => (inventoryId) => {
+  data: (state) => state.data,
+  getInventoryData: (state) => (inventoryId) => {
     state.data; // eslint-disable-line no-unused-expressions
     return filter(state.data, { inventory: inventoryId });
   },
-  getData: state => (id) => {
+  getData: (state) => (id) => {
     state.data; // eslint-disable-line no-unused-expressions
     return find(state.data, ['id', id]);
   },
-  isLoading: state => state.loading,
+  isLoading: (state) => state.loading,
 };
 
 const onError = (key, commit, error, reject) => {
@@ -23,7 +25,7 @@ const onError = (key, commit, error, reject) => {
   reject(error);
 };
 
-const getActions = key => ({
+const getActions = (key) => ({
   getResources({ commit }) {
     commit('setDataLoading', true);
     return new Promise((resolve, reject) => {
@@ -92,7 +94,7 @@ const getActions = key => ({
         method: 'patch',
         url: `${serverUrl()}/${key}/${resource.id}`,
         responseType: 'json',
-        headers: Object.assign({}, { 'If-Match': resource.etag }, authHeader()),
+        headers: { 'If-Match': resource.etag, ...authHeader() },
         data: payload,
       }).then(({ data }) => {
         commit('setResources', data);
@@ -110,7 +112,7 @@ const getActions = key => ({
         method: 'delete',
         url: `${serverUrl()}/${key}/${resource.id}`,
         responseType: 'json',
-        headers: Object.assign({}, { 'If-Match': resource.etag }, authHeader()),
+        headers: { 'If-Match': resource.etag, ...authHeader() },
       }).then(() => {
         commit('setDataLoading', false);
         commit('removeData', resource.id);

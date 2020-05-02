@@ -12,7 +12,7 @@
                 ></v-text-field>
                 <v-text-field v-model="password"
                               label="Password"
-                              :append-icon="showPassword ? 'visibility_off' : 'visibility'"
+                              :append-icon="showPassword ? 'fa-eye-slash' : 'fa-eye'"
                               :type="showPassword ? 'text' : 'password'"
                               @click:append="showPassword = !showPassword"
                 ></v-text-field>
@@ -50,11 +50,6 @@ export default {
       },
     };
   },
-  computed: {
-    loggingIn() {
-      return this.$store.getters['authentication/status'].loggingIn;
-    },
-  },
   created() {
     this.$store.dispatch('authentication/logout');
   },
@@ -65,11 +60,14 @@ export default {
         type: 'authentication/login',
         email: this.email,
         password: this.password,
+      }).then(() => {
+        this.$router.push({ name: 'Inventories' });
       }).catch((request) => {
         this.alert.message = request.response.data;
         this.alert.show = true;
-        clearInterval(this.interval);
-      }).finally(this.submitted = false);
+      }).finally(() => {
+        this.submitted = false;
+      });
     },
   },
 };

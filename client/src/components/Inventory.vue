@@ -83,50 +83,41 @@
             v-else
             :items="filtredProductsAndCounts"
             :headers="headers"
-            :pagination.sync="pagination"
-            :rows-per-page-items="row_per_page"
+            :items-per-page="15"
+            multi-sort
           >
-            <template slot="headers" slot-scope="props">
-              <tr>
-                <th
-                  v-for="header in props.headers"
-                  :key="header.text"
-                  :class="[header.class,
-                         pagination.descending ? 'desc' : 'asc',
-                         header.value === pagination.sortBy ? 'active' : '']"
-                  @click="changeSort(header.value)"
-                >
-                  <p>{{ header.text }}</p>
-                </th>
-                <th></th>
-              </tr>
-            </template>
-            <template slot="items" slot-scope="props">
-              <td class="text-xs-left" width="30%">{{ props.item.name }}</td>
-              <td class="text-xs-left">{{ props.item.barcode }}</td>
-              <td class="text-xs-center">{{ props.item.qty_in_odoo }}</td>
-              <td :class="errorOdooClass(props.item)">{{ props.item.errOdoo }}</td>
-              <td v-for="(counterAtZone, index) in valuesToDisplay()"
-                  :key="index"
-                  :class="productClass(props.item, counterAtZone)">
-                <span v-if="isThisAnError(counterAtZone)"
-                      class="font-weight-bold">
-                  {{ props.item[counterAtZone] }}
-                </span>
-                <v-text-field v-else
-                              background-color="blue-grey lighten-5"
-                              :disabled="inventory.state>=2"
-                              @input="changeCounts(props.item)"
-                              v-model="props.item[counterAtZone]">
-                </v-text-field>
-              </td>
-              <td>
-                <v-btn color="success"
-                       :disabled="!props.item.modified || inventory.state>=2"
-                       @click="saveCount(props.item)">
-                  Save
-                </v-btn>
-              </td>
+            <template v-slot:body="{ items }">
+              <tbody>
+                <tr v-for="item in items" :key="item.name">
+                  <td class="text-left text-no-wrap">{{ item.name }}</td>
+                  <td class="text-left">{{ item.barcode }}</td>
+                  <td class="text-center">{{ item.qty_in_odoo }}</td>
+                  <td :class="errorOdooClass(item)">{{ item.errOdoo }}</td>
+                  <td v-for="(counterAtZone, index) in valuesToDisplay()"
+                      :key="index"
+                      :class="productClass(item, counterAtZone)">
+                    <span v-if="isThisAnError(counterAtZone)"
+                          class="font-weight-bold">
+                      {{ item[counterAtZone] }}
+                    </span>
+                    <v-text-field v-else
+                                  dense
+                                  hide-details="auto"
+                                  background-color="blue-grey lighten-5"
+                                  :disabled="inventory.state>=2"
+                                  @input="changeCounts(item)"
+                                  v-model="item[counterAtZone]">
+                    </v-text-field>
+                  </td>
+                  <td>
+                    <v-btn color="success"
+                           :disabled="!item.modified || inventory.state>=2"
+                           @click="saveCount(item)">
+                      Save
+                    </v-btn>
+                  </td>
+                </tr>
+              </tbody>
             </template>
           </v-data-table>
         </v-card-text>
@@ -137,7 +128,9 @@
 
 <script>
 import Papa from 'papaparse';
-import { clone, includes, isEmpty, find, findIndex, forEach, get, sortBy, trim } from 'lodash';
+import {
+  clone, includes, isEmpty, find, findIndex, forEach, get, sortBy, trim,
+} from 'lodash';
 import moment from 'moment';
 
 const ODOO_ID_COLUMN = 'line_ids/product_id/id';
@@ -161,22 +154,12 @@ export default {
   name: 'Inventory',
   data() {
     return {
-      pagination: {
-        sortBy: 'errOdoo',
-        descending: true,
-      },
-      row_per_page: [
-        25, 50, 100,
-        {
-          text: '$vuetify.dataIterator.rowsPerPageAll',
-          value: -1,
-        },
-      ],
       alert: {
         show: false,
         message: '',
         type: 'error',
       },
+      lastUpdatedCount: '',
       productsAndCounts: [],
       someErrorInCounts: false,
       zones: [],
@@ -186,7 +169,7 @@ export default {
       radioGroup: 'Toutes',
     };
   },
-  created() {
+  beforeMount() {
     this.$store.dispatch({
       type: 'inventories/fetchResource',
       id: this.inventoryId,
@@ -194,6 +177,11 @@ export default {
     this.$store.dispatch({
       type: 'products/getResourcesWhere',
       where: { inventory: `${this.inventoryId}` },
+    }).then(() => {
+      this.initProductAndCounts();
+      this.updateProductsAndCounts();
+      this.applyFilter();
+      this.loadCounts();
     });
     this.interval = setInterval(() => {
       this.loadCounts();
@@ -203,11 +191,6 @@ export default {
     clearInterval(this.interval);
   },
   watch: {
-    products() {
-      this.initProductAndCounts();
-      this.updateProductsAndCounts();
-      this.applyFilter();
-    },
     counts() {
       if (isEmpty(this.productsAndCounts)) {
         this.initProductAndCounts();
@@ -239,16 +222,37 @@ export default {
     },
     headers() {
       const headers = [
-        { text: 'Nom', value: 'name', class: 'column sortable text-xs-left' },
-        { text: 'Barcode', value: 'barcode', class: 'column sortable text-xs-left' },
-        { text: 'Quantité théorique', value: 'qty_in_odoo', class: 'column sortable verticalTableHeader' },
-        { text: 'Ecart avec Odoo', value: 'errOdoo', class: 'column sortable verticalTableHeader' },
+        {
+          text: 'Nom',
+          value: 'name',
+          align: 'start',
+          class: 'text-no-wrap ',
+        },
+        {
+          text: 'Barcode',
+          value: 'barcode',
+          align: 'start',
+          class: 'text-no-wrap',
+        },
+        {
+          text: 'Quantité théorique',
+          value: 'qty_in_odoo',
+          align: 'center',
+          class: 'text-no-wrap',
+        },
+        {
+          text: 'Ecart avec Odoo',
+          value: 'errOdoo',
+          align: 'center',
+          class: 'text-no-wrap',
+        },
       ];
       this.valuesToDisplay().forEach((value) => {
         headers.push({
           text: value,
           value,
-          class: 'column sortable verticalTableHeader',
+          align: 'center',
+          class: 'text-no-wrap inventoryHeader',
         });
       });
       return headers;
@@ -283,7 +287,7 @@ export default {
       return 'text-xs-center font-weight-bold';
     },
     productClass(product, counterAtZone) {
-      const zone = this.unjoinCounterAtZone(counterAtZone).zone;
+      const { zone } = this.unjoinCounterAtZone(counterAtZone);
       const zoneIndex = findIndex(product.zones, { name: zone });
       if (zoneIndex >= 0) {
         if (product.zones[zoneIndex].errCount > 0) {
@@ -294,14 +298,6 @@ export default {
         return 'text-xs-center green lighten-4';
       }
       return 'text-xs-center';
-    },
-    changeSort(column) {
-      if (this.pagination.sortBy === column) {
-        this.pagination.descending = !this.pagination.descending;
-      } else {
-        this.pagination.sortBy = column;
-        this.pagination.descending = true;
-      }
     },
     unjoinCounterAtZone(counterAtZone) {
       const result = counterAtZone.split(SEPARATOR);
@@ -359,7 +355,7 @@ export default {
       if (!isEmpty(counts)) {
         this.$store.dispatch({
           type: 'counts/createResource',
-          resource: counts.map(count => ({
+          resource: counts.map((count) => ({
             counter: count.counter,
             zone: count.zone,
             qty: count.qty,
@@ -405,24 +401,24 @@ export default {
             zoneQty = count.qty;
             firstLoop = false;
           } else if (zoneQty !== count.qty) {
-            zone.errCount = // eslint-disable-line no-param-reassign
-                this.round(Math.max(zone.errCount, Math.abs(zoneQty - count.qty)), 3);
+            // eslint-disable-next-line no-param-reassign
+            zone.errCount = this.round(Math.max(zone.errCount, Math.abs(zoneQty - count.qty)), 3);
           }
           if (expectedCounterCount !== actualCounterCount) {
-            zone.errCount = // eslint-disable-line no-param-reassign
-                this.round(Math.max(zone.errCount, count.qty), 3);
+            // eslint-disable-next-line no-param-reassign
+            zone.errCount = this.round(Math.max(zone.errCount, count.qty), 3);
           }
         });
 
         productAndCounts[`${zone.name}${SEPARATOR}${ERROR}`] = zone.errCount; // eslint-disable-line no-param-reassign
         totalQty += zoneQty;
       });
-      productAndCounts.errOdoo = // eslint-disable-line no-param-reassign
-          this.round(Math.abs(totalQty - productAndCounts.qty_in_odoo), 3);
+      // eslint-disable-next-line no-param-reassign
+      productAndCounts.errOdoo = this.round(Math.abs(totalQty - productAndCounts.qty_in_odoo), 3);
     },
     updateProductsAndCounts() {
       const updatedProductsAndCounts = [];
-      let lastUpdatedCount = this.lastUpdatedCount;
+      let { lastUpdatedCount } = this;
       this.counts.forEach((count) => {
         if (count.updated > this.lastUpdatedCount) {
           const productIndex = findIndex(this.productsAndCounts, { id: count.product });
@@ -460,9 +456,9 @@ export default {
 
       this.someErrorInCounts = findIndex(
         this.productsAndCounts,
-        product => findIndex(
+        (product) => findIndex(
           product.zones,
-          zone => zone.errCount > 0,
+          (zone) => zone.errCount > 0,
         ) >= 0,
       ) >= 0;
     },
@@ -519,19 +515,19 @@ export default {
         complete: (results) => {
           const nameIndex = findIndex(
             results.data[0],
-            x => RegExp(NAME_COLUMN).test(x),
+            (x) => RegExp(NAME_COLUMN).test(x),
           );
           const barcodeIndex = findIndex(
             results.data[0],
-            x => RegExp(BARCODE_COLUMN).test(x),
+            (x) => RegExp(BARCODE_COLUMN).test(x),
           );
           const qtyIndex = findIndex(
             results.data[0],
-            x => RegExp(QTY_COLUMN_RE).test(x),
+            (x) => RegExp(QTY_COLUMN_RE).test(x),
           );
           const odooIdIndex = findIndex(
             results.data[0],
-            x => RegExp(ODOO_ID_COLUMN_RE).test(x),
+            (x) => RegExp(ODOO_ID_COLUMN_RE).test(x),
           );
           if (nameIndex < 0 || barcodeIndex < 0 || qtyIndex < 0 || odooIdIndex < 0) {
             // TODO raise error
@@ -631,22 +627,8 @@ export default {
 };
 </script>
 
-<style scoped>
-  .verticalTableHeader {
-    text-align: center;
-    white-space: nowrap;
-    transform: rotate(90deg) !important;
-  }
-  .verticalTableHeader p {
-    margin: 0 -999px;/* virtually reduce space needed on width to very little */
-    display: inline-block;
-  }
-  .verticalTableHeader p:before {
-    content: '';
-    width: 0;
-    padding-top: 110%;
-    /* takes width as reference, + 10% for faking some extra padding */
-    display: inline-block;
-    vertical-align: middle;
+<style>
+  th.inventoryHeader {
+    text-align: center !important;
   }
 </style>

@@ -1,17 +1,16 @@
 import axios from 'axios';
 import jwt_decode from 'jwt-decode'; // eslint-disable-line camelcase
 
-import router from '@/router/index';
-import authHeader from '@/mixin/authHeader';
-import { recordTokenInCookie, removeCookieToken } from '@/mixin/cookie';
-import serverUrl from '@/mixin/url';
+import authHeader from '../mixin/authHeader';
+import { recordTokenInCookie, removeCookieToken } from '../mixin/cookie';
+import serverUrl from '../mixin/url';
 
 const initialState = { status: {}, token: null, user: (process.env.NODE_ENV === 'production') ? null : { role: 'admin' } };
 
 const getters = {
-  status: state => state.status,
-  token: state => state.token,
-  user: state => state.user,
+  status: (state) => state.status,
+  token: (state) => state.token,
+  user: (state) => state.user,
 };
 
 const authentication = {
@@ -29,7 +28,6 @@ const authentication = {
         }).then(({ data }) => {
           commit('loginSuccess', data);
           resolve(data);
-          router.push({ name: 'Inventories' });
         }).catch((error) => {
           commit('loginFailure', error);
           reject(error);
@@ -45,7 +43,6 @@ const authentication = {
         }).then(({ data }) => {
           commit('loginSuccess', data);
           resolve(data);
-          router.push({ name: 'Inventories' });
         }).catch((error) => {
           commit('loginFailure', error);
           reject(error);
