@@ -3,6 +3,7 @@ version: '2.1'
 services:
   db:
     image: mongo
+    restart: unless-stopped
     ports:
       - 27017:27017
     env_file:

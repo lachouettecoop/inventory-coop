@@ -1,60 +1,69 @@
 <template>
   <v-layout column>
-    <v-flex xs12 lg8 sm6>
-      <img src="@/assets/logo.png">
-      <v-card style="max-width: 50%; margin: auto;">
+    <v-flex>
+      <img src="@/assets/logo.png" center>
+      <v-card style="max-width: 90%; margin: auto;">
         <v-card-title primary-title>
           <div class="headline">Gestion des inventaires</div>
           <v-btn v-if="user.role==='admin'"
                  fab absolute right color="teal darken-3" class="white--text"
                  @click="addInventory">
-            <v-icon>add</v-icon>
+            <v-icon small>fa-plus</v-icon>
           </v-btn>
         </v-card-title>
         <v-list>
           <template v-for="inventory in inventories">
-            <v-list-tile
+            <v-list-item
               :key="inventory.id"
-              avatar
             >
-              <v-list-tile-avatar>
-                <v-icon v-if="inventory.active">fas fa-spinner</v-icon>
-                <v-icon v-else>fas fa-stop-circle</v-icon>
-              </v-list-tile-avatar>
+              <v-list-item-avatar>
+                <v-icon v-if="inventory.state===0" color="teal">fa-hourglass-start</v-icon>
+                <v-icon v-else-if="inventory.state===1" color="green darken-1">fa-play</v-icon>
+                <v-icon v-else>fa-stop-circle</v-icon>
+              </v-list-item-avatar>
 
-              <v-list-tile-content>
-                <v-list-tile-title v-html="inventory.date"></v-list-tile-title>
-              </v-list-tile-content>
+              <v-list-item-content>
+                <v-list-item-title v-html="inventory.date"></v-list-item-title>
+              </v-list-item-content>
               <div>
                 <v-btn fab small
                        @click="jumpToInventoryDetails(inventory)">
                   <v-icon v-if="inventory.state<2"
-                          color="indigo darken-1">
-                    fas fa-edit
+                          color="indigo darken-1"
+                          small>
+                    fa-edit
                   </v-icon>
                   <v-icon v-else
-                          color="green darken-1">
-                    fas fa-eye
+                          color="green darken-1"
+                          small>
+                    fa-eye
                   </v-icon>
                 </v-btn>
                 <v-dialog v-if="user.role==='admin'"
                           v-model="dialog" persistent max-width="290">
-                  <v-btn fab small
-                         slot="activator">
-                    <v-icon color="red lighten-2">fas fa-trash</v-icon>
-                  </v-btn>
+                  <template v-slot:activator="{ on }">
+                    <v-btn fab
+                           small
+                           v-on="on"
+                           slot="activator">
+                      <v-icon color="red lighten-2"
+                              small>
+                        fas fa-trash
+                      </v-icon>
+                    </v-btn>
+                  </template>
                   <v-card>
                     <v-card-text>
                       Ceci supprimera l'inventaire et tous les comptes associés.
                       Êtes-vous sur de vouloir continuer ?
                     </v-card-text>
                     <v-card-actions>
-                      <v-btn color="grey" flat
+                      <v-btn color="grey"
                              @click.native="dialog=false">
                         Annuler
                       </v-btn>
                       <v-spacer/>
-                      <v-btn color="red lighten-2" flat
+                      <v-btn color="red lighten-2"
                              @click="removeInventory(inventory)">
                         Confirmer
                       </v-btn>
@@ -62,7 +71,7 @@
                   </v-card>
                 </v-dialog>
               </div>
-            </v-list-tile>
+            </v-list-item>
           </template>
         </v-list>
       </v-card>
@@ -71,6 +80,7 @@
 </template>
 
 <script>
+import { orderBy } from 'lodash';
 
 export default {
   name: 'Inventories',
@@ -85,7 +95,8 @@ export default {
   },
   computed: {
     inventories() {
-      return this.$store.getters['inventories/data'];
+      const inventories = this.$store.getters['inventories/data'];
+      return orderBy(inventories, ['created']);
     },
     loading() {
       return this.$store.getters['inventories/isLoading'];
