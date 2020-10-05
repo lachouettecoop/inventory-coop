@@ -5,7 +5,7 @@ ARG NODE_VERSION=v12.16.3
 RUN apt update; \
     apt install -y libsasl2-dev python-dev libldap2-dev libssl-dev; \
     pip install --upgrade pip; \
-    curl -o /tmp/node-${NODE_VERSION}-linux-x64.tar.xz https://nodejs.org/dist/${NODE_VERSION}/node-${NODE_VERSION}-linux-x64.tar.xz; \
+    curl -o /tmp/node-${NODE_VERSION}-linux-x64.tar.xz -k https://nodejs.org/dist/${NODE_VERSION}/node-${NODE_VERSION}-linux-x64.tar.xz; \
     cd /tmp; \
     tar xvf node-${NODE_VERSION}-linux-x64.tar.xz
 
