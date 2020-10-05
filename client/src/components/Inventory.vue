@@ -39,19 +39,24 @@
                               v-model="productFilter">
                 </v-text-field>
                 <v-spacer/>
-                <span>Equipe(s):</span>
-                <v-radio-group
-                  v-model="radioGroup"
-                  row
-                  @change="changeZoneShow"
-                >
-                  <v-radio
-                    v-for="(zone, index) in [{name: 'Toutes'}].concat(zones)"
-                    :key="index"
-                    :label="zone.name"
-                    :value="zone.name"
-                  ></v-radio>
-                </v-radio-group>
+                <template v-if="inventory.state<2">
+                  <span>Equipe(s):</span>
+                  <v-radio-group
+                    v-model="radioGroup"
+                    row
+                    @change="changeZoneShow"
+                  >
+                    <v-radio
+                      v-for="(zone, index) in [{name: 'Toutes'}].concat(zones)"
+                      :key="index"
+                      :label="zone.name"
+                      :value="zone.name"
+                    ></v-radio>
+                  </v-radio-group>
+                </template>
+                <template v-else>
+                  <span class="title">Valeur du stock: {{totalCost()}}</span>
+                </template>
               </v-layout>
             </v-layout>
           </v-container>
@@ -93,29 +98,35 @@
                   <td class="text-left">{{ item.barcode }}</td>
                   <td class="text-center">{{ item.qty_in_odoo }}</td>
                   <td :class="errorOdooClass(item)">{{ item.errOdoo }}</td>
-                  <td v-for="(counterAtZone, index) in valuesToDisplay()"
-                      :key="index"
-                      :class="productClass(item, counterAtZone)">
-                    <span v-if="isThisAnError(counterAtZone)"
-                          class="font-weight-bold">
-                      {{ item[counterAtZone] }}
-                    </span>
-                    <v-text-field v-else
-                                  dense
-                                  hide-details="auto"
-                                  background-color="blue-grey lighten-5"
-                                  :disabled="inventory.state>=2"
-                                  @input="changeCounts(item)"
-                                  v-model="item[counterAtZone]">
-                    </v-text-field>
-                  </td>
-                  <td>
-                    <v-btn color="success"
-                           :disabled="!item.modified || inventory.state>=2"
-                           @click="saveCount(item)">
-                      Save
-                    </v-btn>
-                  </td>
+                  <template v-if="inventory.state<2">
+                    <td v-for="(counterAtZone, index) in valuesToDisplay()"
+                        :key="index"
+                        :class="productClass(item, counterAtZone)">
+                      <span v-if="isThisAnError(counterAtZone)"
+                            class="font-weight-bold">
+                        {{ item[counterAtZone] }}
+                      </span>
+                      <v-text-field v-else
+                                    dense
+                                    hide-details="auto"
+                                    background-color="blue-grey lighten-5"
+                                    :disabled="inventory.state>=2"
+                                    @input="changeCounts(item)"
+                                    v-model="item[counterAtZone]">
+                      </v-text-field>
+                    </td>
+                    <td>
+                      <v-btn color="success"
+                             :disabled="!item.modified"
+                             @click="saveCount(item)">
+                        Save
+                      </v-btn>
+                    </td>
+                  </template>
+                  <template v-else>
+                    <td>{{ item.totalQty }}</td>
+                    <td>{{ asEuro(item.totalQty * item.cost) }}</td>
+                  </template>
                 </tr>
               </tbody>
             </template>
@@ -137,6 +148,7 @@ const ODOO_ID_COLUMN = 'line_ids/product_id/id';
 const ODOO_ID_COLUMN_RE = '.*product_variant_ids/?.id';
 const NAME_COLUMN = 'name';
 const BARCODE_COLUMN = 'barcode';
+const COST_COLUMN = 'standard_price';
 const QTY_COLUMN = 'line_ids/product_qty';
 const QTY_COLUMN_RE = '.*qty_available';
 const LOCATION_COLUMN = 'location_id/id';
@@ -145,8 +157,6 @@ const PRODUCT_UOM_COLUMN = 'line_ids/product_uom_id/id';
 const PRODUCT_UOM_VALUE = 'product.product_uom_unit';
 const LINE_LOCATION_COLUMN = 'line_ids/location_id/id';
 const LINE_LOCATION_VALUE = 'stock.stock_location_stock';
-
-
 const SEPARATOR = ' - ';
 const ERROR = 'Erreur';
 
@@ -247,14 +257,29 @@ export default {
           class: 'text-no-wrap',
         },
       ];
-      this.valuesToDisplay().forEach((value) => {
+      if (this.inventory.state >= 2) {
         headers.push({
-          text: value,
-          value,
+          text: 'Quantité réelle',
+          value: 'totalQty',
           align: 'center',
-          class: 'text-no-wrap inventoryHeader',
+          class: 'text-no-wrap',
         });
-      });
+        headers.push({
+          text: 'Valeur',
+          value: 'cost',
+          align: 'center',
+          class: 'text-no-wrap',
+        });
+      } else {
+        this.valuesToDisplay().forEach((value) => {
+          headers.push({
+            text: value,
+            value,
+            align: 'center',
+            class: 'text-no-wrap inventoryHeader',
+          });
+        });
+      }
       return headers;
     },
   },
@@ -329,6 +354,21 @@ export default {
       this.updateErrors(productAndCounts);
       productAndCounts.modified = modified; // eslint-disable-line no-param-reassign
     },
+    asEuro(number) {
+      // Create our number formatter.
+      const formatter = new Intl.NumberFormat('fr-FR', {
+        style: 'currency',
+        currency: 'EUR',
+      });
+      return formatter.format(number);
+    },
+    totalCost() {
+      let cost = 0;
+      this.productsAndCounts.forEach((product) => {
+        cost += product.totalQty * product.cost;
+      });
+      return this.asEuro(cost);
+    },
     saveCount(productAndCounts) {
       const counts = [];
       this.zones.forEach((zone) => {
@@ -374,7 +414,8 @@ export default {
       this.products.forEach((product) => {
         const productAndCounts = clone(product);
         productAndCounts.zones = [];
-        productAndCounts.errOdoo = null;
+        productAndCounts.errOdoo = 0;
+        productAndCounts.totalQty = 0;
         productAndCounts.modified = false;
         this.productsAndCounts.push(productAndCounts);
       });
@@ -415,6 +456,8 @@ export default {
       });
       // eslint-disable-next-line no-param-reassign
       productAndCounts.errOdoo = this.round(Math.abs(totalQty - productAndCounts.qty_in_odoo), 3);
+      // eslint-disable-next-line no-param-reassign
+      productAndCounts.totalQty = totalQty;
     },
     updateProductsAndCounts() {
       const updatedProductsAndCounts = [];
@@ -510,44 +553,58 @@ export default {
         zone.show = selectedZone === 'Toutes' || zone.name === selectedZone;
       });
     },
+    getIndex(data, columnName) {
+      const index = findIndex(data, (x) => RegExp(columnName).test(x));
+      if (index < 0) {
+        this.alert = {
+          show: true,
+          message: `Error during CSV parsing: missing "${index}" column`,
+          type: 'error',
+        };
+      }
+      return index;
+    },
     parseFile(e) {
       Papa.parse(e.target.files[0], {
         complete: (results) => {
-          const nameIndex = findIndex(
+          const nameIndex = this.getIndex(results.data[0], NAME_COLUMN);
+          const barcodeIndex = this.getIndex(results.data[0], BARCODE_COLUMN);
+          const qtyIndex = this.getIndex(results.data[0], QTY_COLUMN_RE);
+          const odooIdIndex = this.getIndex(results.data[0], ODOO_ID_COLUMN_RE);
+          const costIndex = findIndex(
             results.data[0],
-            (x) => RegExp(NAME_COLUMN).test(x),
+            (x) => RegExp(COST_COLUMN).test(x),
           );
-          const barcodeIndex = findIndex(
-            results.data[0],
-            (x) => RegExp(BARCODE_COLUMN).test(x),
-          );
-          const qtyIndex = findIndex(
-            results.data[0],
-            (x) => RegExp(QTY_COLUMN_RE).test(x),
-          );
-          const odooIdIndex = findIndex(
-            results.data[0],
-            (x) => RegExp(ODOO_ID_COLUMN_RE).test(x),
-          );
-          if (nameIndex < 0 || barcodeIndex < 0 || qtyIndex < 0 || odooIdIndex < 0) {
-            // TODO raise error
+          if (nameIndex < 0
+            || barcodeIndex < 0
+            || qtyIndex < 0
+            || odooIdIndex < 0) {
             return;
           }
           const productList = [];
           for (let i = 1; i < results.data.length; i += 1) {
             const name = trim(results.data[i][nameIndex]);
             const barcode = trim(results.data[i][barcodeIndex]);
-            let qty = Number(trim(results.data[i][qtyIndex]));
             const odooId = trim(results.data[i][odooIdIndex]);
+            let qtyStr = trim(results.data[i][qtyIndex]);
+            if (qtyStr.startsWith("'-")) {
+              qtyStr = qtyStr.slice(1);
+            }
+            let qty = Number(qtyStr);
+            let cost = costIndex >= 0 ? Number(trim(results.data[i][costIndex])) : 0;
             if (!isEmpty(name) && !isEmpty(odooId) && !isEmpty(barcode)) {
               if (!qty) {
                 qty = 0;
+              }
+              if (!cost) {
+                cost = 0;
               }
               productList.push({
                 name,
                 barcode,
                 qty_in_odoo: Number(qty),
                 odoo_id: odooId,
+                cost,
                 inventory: this.inventory.id,
               });
             }
@@ -574,21 +631,13 @@ export default {
       const filename = `to_odoo_${m.format('YY-MM-DD')}.csv`;
       const data = [];
       this.productsAndCounts.forEach((productAndCounts) => {
-        let qty = 0;
-        if (!isEmpty(productAndCounts.zones)) {
-          productAndCounts.zones.forEach((zone) => {
-            if (!isEmpty(zone.counts)) {
-              qty += zone.counts[0].qty;
-            }
-          });
-        }
-        if (qty !== productAndCounts.qty_in_odoo) {
+        if (productAndCounts.totalQty !== productAndCounts.qty_in_odoo) {
           // Only push product with disparity
           data.push([
             '',
             '',
             `__export__.product_product_${productAndCounts.odoo_id}`,
-            qty,
+            productAndCounts.totalQty,
             PRODUCT_UOM_VALUE,
             LINE_LOCATION_VALUE,
           ]);

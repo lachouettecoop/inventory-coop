@@ -66,12 +66,16 @@ products = {
         'qty_in_odoo': {
             'type': 'number',
         },
+        'cost': {
+            'type': 'number',
+            'default': 0,
+        },
         'inventory': {
             'type': 'objectid',
             'required': True,
             'data_relation': {
                 'resource': 'inventories',
-                'embeddable': True
+                'embeddable': True,
             },
         },
     },

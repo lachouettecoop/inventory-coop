@@ -1,7 +1,7 @@
 # Inventory COOP API
 This is the backend of inventory solution.
 The other products are :
-- Frontend (https://github.com/lachouettecoop/inventory-coop-client.git)
+- Frontend (./client)
 - Android application (https://github.com/lachouettecoop/inventory-coop-android.git)
 
 ### Requirement
