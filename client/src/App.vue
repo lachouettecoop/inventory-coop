@@ -30,11 +30,11 @@
       </v-btn>
     </v-app-bar>
 
-    <v-content>
+    <v-main>
       <v-container grid-list-xl>
         <router-view/>
       </v-container>
-    </v-content>
+    </v-main>
   </v-app>
 </template>
 
