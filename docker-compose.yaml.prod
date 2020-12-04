@@ -20,6 +20,7 @@ services:
       - api.env
     environment:
       STATIC_PATH: /app/client/dist/static
+      EVE_SETTINGS: /app/api/settings.py
     networks:
       default:
       inverseproxy_shared:

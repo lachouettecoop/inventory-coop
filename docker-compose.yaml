@@ -19,6 +19,7 @@ services:
       - api.env
     environment:
       STATIC_PATH: /app/client/dist/static
+      EVE_SETTINGS: /app/api/settings.py
     ports:
       - 8000:80/tcp
     links:

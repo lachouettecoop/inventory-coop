@@ -3,7 +3,7 @@ import Cookies from 'js-cookie';
 const COOKIE_NAME = 'InventoryCoopClient';
 
 export function recordTokenInCookie(token) {
-  Cookies.set(COOKIE_NAME, token);
+  Cookies.set(COOKIE_NAME, token, { sameSite: 'strict' });
 }
 
 export function getTokenFromCookie() {
