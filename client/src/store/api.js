@@ -1,6 +1,6 @@
 import axios from 'axios';
 import {
-  filter, find, forEach, isArray, isEmpty, reduce,
+  forEach, isArray, isEmpty, reduce,
 } from 'lodash';
 
 import serverUrl from '@/mixin/url';
@@ -8,14 +8,6 @@ import authHeader from '@/mixin/authHeader';
 
 const getters = {
   data: (state) => state.data,
-  getInventoryData: (state) => (inventoryId) => {
-    state.data; // eslint-disable-line no-unused-expressions
-    return filter(state.data, { inventory: inventoryId });
-  },
-  getData: (state) => (id) => {
-    state.data; // eslint-disable-line no-unused-expressions
-    return find(state.data, ['id', id]);
-  },
   isLoading: (state) => state.loading,
 };
 

@@ -140,7 +140,7 @@
 <script>
 import Papa from 'papaparse';
 import {
-  clone, includes, isEmpty, find, findIndex, forEach, get, sortBy, trim,
+  clone, includes, isEmpty, find, findIndex, forEach, get, sortBy, trim, filter,
 } from 'lodash';
 import moment from 'moment';
 
@@ -201,11 +201,19 @@ export default {
     clearInterval(this.interval);
   },
   watch: {
+    products() {
+      if (isEmpty(this.productsAndCounts)) {
+        this.initProductAndCounts();
+      }
+      this.updateProductsAndCounts();
+      this.applyFilter();
+    },
     counts() {
       if (isEmpty(this.productsAndCounts)) {
         this.initProductAndCounts();
       }
       this.updateProductsAndCounts();
+      this.applyFilter();
     },
     productFilter() {
       this.applyFilter();
@@ -216,13 +224,16 @@ export default {
       return this.$route.params.id;
     },
     inventory() {
-      return this.$store.getters['inventories/getData'](this.inventoryId);
+      const inventories = this.$store.getters['inventories/data'];
+      return find(inventories, ['id', this.inventoryId]);
     },
     products() {
-      return this.$store.getters['products/getInventoryData'](this.inventoryId);
+      const products = this.$store.getters['products/data'];
+      return filter(products, { inventory: this.inventoryId });
     },
     counts() {
-      return this.$store.getters['counts/getInventoryData'](this.inventoryId);
+      const counts = this.$store.getters['counts/data'];
+      return filter(counts, { inventory: this.inventoryId });
     },
     isLoading() {
       return this.$store.getters['products/isLoading'];
