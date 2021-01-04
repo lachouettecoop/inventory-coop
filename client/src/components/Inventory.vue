@@ -144,7 +144,7 @@ import {
 } from 'lodash';
 import moment from 'moment';
 
-const ODOO_ID_COLUMN = 'line_ids/product_id/id';
+const ODOO_ID_COLUMN = 'line_ids/product_id/.id';
 const ODOO_ID_COLUMN_RE = '.*product_variant_ids/?.id';
 const NAME_COLUMN = 'name';
 const BARCODE_COLUMN = 'barcode';
@@ -647,7 +647,7 @@ export default {
           data.push([
             '',
             '',
-            `__export__.product_product_${productAndCounts.odoo_id}`,
+            productAndCounts.odoo_id,
             productAndCounts.totalQty,
             PRODUCT_UOM_VALUE,
             LINE_LOCATION_VALUE,
