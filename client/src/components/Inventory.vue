@@ -140,11 +140,11 @@
 <script>
 import Papa from 'papaparse';
 import {
-  clone, includes, isEmpty, find, findIndex, forEach, get, sortBy, trim,
+  clone, includes, isEmpty, find, findIndex, forEach, get, sortBy, trim, filter,
 } from 'lodash';
 import moment from 'moment';
 
-const ODOO_ID_COLUMN = 'line_ids/product_id/id';
+const ODOO_ID_COLUMN = 'line_ids/product_id/.id';
 const ODOO_ID_COLUMN_RE = '.*product_variant_ids/?.id';
 const NAME_COLUMN = 'name';
 const BARCODE_COLUMN = 'barcode';
@@ -201,11 +201,19 @@ export default {
     clearInterval(this.interval);
   },
   watch: {
+    products() {
+      if (isEmpty(this.productsAndCounts)) {
+        this.initProductAndCounts();
+      }
+      this.updateProductsAndCounts();
+      this.applyFilter();
+    },
     counts() {
       if (isEmpty(this.productsAndCounts)) {
         this.initProductAndCounts();
       }
       this.updateProductsAndCounts();
+      this.applyFilter();
     },
     productFilter() {
       this.applyFilter();
@@ -216,13 +224,16 @@ export default {
       return this.$route.params.id;
     },
     inventory() {
-      return this.$store.getters['inventories/getData'](this.inventoryId);
+      const inventories = this.$store.getters['inventories/data'];
+      return find(inventories, ['id', this.inventoryId]);
     },
     products() {
-      return this.$store.getters['products/getInventoryData'](this.inventoryId);
+      const products = this.$store.getters['products/data'];
+      return filter(products, { inventory: this.inventoryId });
     },
     counts() {
-      return this.$store.getters['counts/getInventoryData'](this.inventoryId);
+      const counts = this.$store.getters['counts/data'];
+      return filter(counts, { inventory: this.inventoryId });
     },
     isLoading() {
       return this.$store.getters['products/isLoading'];
@@ -636,7 +647,7 @@ export default {
           data.push([
             '',
             '',
-            `__export__.product_product_${productAndCounts.odoo_id}`,
+            productAndCounts.odoo_id,
             productAndCounts.totalQty,
             PRODUCT_UOM_VALUE,
             LINE_LOCATION_VALUE,
