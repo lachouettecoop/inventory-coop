@@ -4,12 +4,15 @@ RUN cd /app/client; \
     npm install; \
     npm run build
 
-FROM tiangolo/uwsgi-nginx-flask:python3.7
+FROM python:3.8
 RUN apt update; \
     apt install -y libsasl2-dev python-dev libldap2-dev libssl-dev; \
-    pip install --upgrade pip;
-COPY ./requirements.txt /app
-RUN pip install --no-cache-dir -r /app/requirements.txt;
-COPY --from=frontend /app/client/dist /app/client/dist
+    pip install --upgrade pip; \
+    pip install poetry;
+WORKDIR /app
+COPY ./pyproject.toml ./poetry.lock /app/
+RUN poetry install;
+COPY ./main.py /app/
 COPY ./api /app/api
-COPY ./main.py ./Procfile ./runtime.txt ./uwsgi.ini /app/
+COPY --from=frontend /app/client/dist /app/client/dist
+CMD ["poetry", "run", "gunicorn", "-w", "4", "-b", "0.0.0.0:80", "main:app"]

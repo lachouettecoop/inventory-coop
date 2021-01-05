@@ -8,70 +8,85 @@ from flask import send_file
 
 from api.login import blueprint as login_blueprint
 from api.login import JwtTokenAuth
+from api.settings import ACTIVE
 from api.settings import CLOSED
 from api.settings import DATE_FORMAT
 from api.settings import ITEM_METHODS
 from api.settings import RESOURCE_METHODS
 from api.settings import X_HEADERS
+from api.odoo import odoo_products
 
 
 def on_insert_inventories_event(items):
     import datetime
+
     date = datetime.datetime.now().strftime(DATE_FORMAT)
     for item in items:
-        item['date'] = date
-        item['state'] = 0
+        item["date"] = date
+        item["state"] = ACTIVE
+
+
+def on_inserted_inventories_event(items):
+    db = app.data.driver.db
+    col_products = db["products"]
+
+    products = odoo_products()
+    for item in items:
+        inventory_id = item["_id"]
+        for p in products:
+            p["inventory"] = inventory_id
+        col_products.insert_many(products)
 
 
 def on_insert_counts_event(items):
     db = app.data.driver.db
     col_inventories = db["inventories"]
     for item in items:
-        inventory = col_inventories.find_one({'_id': ObjectId(item['inventory'])})
-        if inventory['state'] >= CLOSED:
+        inventory = col_inventories.find_one({"_id": ObjectId(item["inventory"])})
+        if inventory["state"] >= CLOSED:
             # Do not let count be register if inventory is closed
             abort(403)
 
 
-NO_AUTH = os.environ.get('NO_AUTH', 'False').lower() in ['true', '1']
+NO_AUTH = os.environ.get("NO_AUTH", "False").lower() in ["true", "1"]
+SETTINGS = os.path.abspath("./api/settings.py")
 if NO_AUTH:
-    app = Eve(__name__,
-              static_folder='./client/dist/')
+    app = Eve(__name__, settings=SETTINGS, static_folder="./client/dist/")
 else:
-    app = Eve(__name__,
-              auth=JwtTokenAuth,
-              static_folder='./client/dist/')
+    app = Eve(
+        __name__, auth=JwtTokenAuth, settings=SETTINGS, static_folder="./client/dist/"
+    )
     app.register_blueprint(login_blueprint)
 
-app.on_insert_inventories += on_insert_inventories_event
 app.on_insert_counts += on_insert_counts_event
+app.on_insert_inventories += on_insert_inventories_event
+app.on_inserted_inventories += on_inserted_inventories_event
 
 
 @app.after_request
 def allow_all_origins(response):
-    if os.environ.get('ALLOW_ALL_ORIGINS', 'False').lower() in ['true', '1']:
+    if os.environ.get("ALLOW_ALL_ORIGINS", "False").lower() in ["true", "1"]:
         response.headers["Access-Control-Allow-Origin"] = "*"
-        response.headers["Access-Control-Allow-Headers"] = ', '.join(X_HEADERS)
-        response.headers["Access-Control-Allow-Methods"] = ', '.join(set(ITEM_METHODS + RESOURCE_METHODS))
+        response.headers["Access-Control-Allow-Headers"] = ", ".join(X_HEADERS)
+        response.headers["Access-Control-Allow-Methods"] = ", ".join(
+            set(ITEM_METHODS + RESOURCE_METHODS)
+        )
     return response
 
 
-@app.route('/api/v1/ping')
+@app.route("/api/v1/ping")
 def ping():
-    return jsonify({
-        'name': 'inventory-coop',
-        'status': 'ok'
-    })
+    return jsonify({"name": "inventory-coop", "status": "ok"})
 
 
 @app.route("/")
 def main():
-    index_path = os.path.join(app.static_folder, 'index.html')
+    index_path = os.path.join(app.static_folder, "index.html")
     return send_file(index_path)
 
 
 # Everything not declared before (not a Flask route / API endpoint)...
-@app.route('/<path:path>')
+@app.route("/<path:path>")
 def route_frontend(path):
     # ...could be a static file needed by the front end that
     # doesn't use the `static` path (like in `<script src="bundle.js">`)
@@ -80,9 +95,9 @@ def route_frontend(path):
         return send_file(file_path)
     # ...or should be handled by the SPA's "router" in front end
     else:
-        index_path = os.path.join(app.static_folder, 'index.html')
+        index_path = os.path.join(app.static_folder, "index.html")
         return send_file(index_path)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.run(debug=True, port=8000)

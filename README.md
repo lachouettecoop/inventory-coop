@@ -23,7 +23,7 @@ docker-compose exec db bash
 Then launch a mongo shell as root
 ```
 mongo -u root -p <root password>
-``` 
+```
 
 Finally execute command :
 ```

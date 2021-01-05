@@ -3,14 +3,13 @@
 .venv/
 volumes/
 .gitignore
+.pre-commit-config.yaml
 api.env
 db.env
 docker-compose.yaml
 docker-compose.yaml.prod
 Dockerfile
 LICENSE
-poetry.lock
-pyproject.toml
 README.md
 
 client/node_modules/
