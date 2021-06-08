@@ -1,13 +1,10 @@
-import jwt
-import ldap
 import os
 import time
-from eve.auth import TokenAuth
-from flask import abort
-from flask import Blueprint
-from flask import jsonify
-from flask import request
 
+import jwt
+import ldap
+from eve.auth import TokenAuth
+from flask import Blueprint, abort, jsonify, request
 
 blueprint = Blueprint("login", __name__)
 
@@ -41,9 +38,7 @@ def build_profile(user):
     try:
         ldap_connection = ldap.initialize(LDAP_SERVER)
         ldap_connection.simple_bind_s(LDAP_BASE_DN, LDAP_ADMIN_PASS)
-        result = ldap_connection.search_s(
-            LDAP_SEARCH_DN, LDAP_SCOPE_SUBTREE, "cn={}".format(user)
-        )
+        result = ldap_connection.search_s(LDAP_SEARCH_DN, LDAP_SCOPE_SUBTREE, "cn={}".format(user))
         ldap_connection.unbind_s()
 
         return {
@@ -98,9 +93,7 @@ def jwt_token_from_header():
             }
         )
     elif len(parts) == 1:
-        raise AuthorizationError(
-            {"code": "invalid_header", "description": "Token not found"}
-        )
+        raise AuthorizationError({"code": "invalid_header", "description": "Token not found"})
     elif len(parts) > 2:
         raise AuthorizationError(
             {
@@ -119,7 +112,7 @@ def requires_auth(f):
             jwt.decode(token, JWT_SECRET)  # throw away value
         except AuthorizationError as e:
             abort(400, e)
-        except jwt.PyJWTError:
+        except jwt.PyJWTError as e:
             abort(401, {"code": "token_invalid", "description": str(e)})
 
         return f(*args, **kwargs)
@@ -135,9 +128,7 @@ def refresh_token():
     token = jwt_token_from_header()
     payload = jwt.decode(token, JWT_SECRET)
     # create a new token with a new exp time
-    token = jwt.encode(
-        build_profile(payload["user"]), JWT_SECRET, algorithm=JWT_ALGORITHM
-    )
+    token = jwt.encode(build_profile(payload["user"]), JWT_SECRET, algorithm=JWT_ALGORITHM)
 
     return jsonify({"token": token})
 
@@ -150,9 +141,7 @@ class JwtTokenAuth(TokenAuth):
         data stored on the DB.
         """
         try:
-            jwt_decoded = jwt.decode(
-                token, JWT_SECRET, algorithms="HS256"
-            )  # throw away value
+            jwt_decoded = jwt.decode(token, JWT_SECRET, algorithms="HS256")  # throw away value
             if (
                 resource in ["inventories"]
                 and method in ["POST", "DELETE"]

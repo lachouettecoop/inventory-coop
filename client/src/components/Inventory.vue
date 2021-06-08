@@ -83,13 +83,13 @@
             :items="filtredProductsAndCounts"
             :headers="headers"
             :items-per-page="15"
-            multi-sort
+            :sort-by="sortBy"
           >
             <template v-slot:body="{ items }">
               <tbody>
                 <tr v-for="item in items" :key="item.name">
                   <td class="text-left text-no-wrap">{{ item.name }}</td>
-                  <td class="text-left">{{ item.barcode }}</td>
+                  <td class="text-left">{{ item.barcode ? item.barcode : "-"}}</td>
                   <td class="text-center">{{ item.qty_in_odoo }}</td>
                   <td :class="errorOdooClass(item)">{{ item.errOdoo }}</td>
                   <template v-if="inventory.state<2">
@@ -168,6 +168,7 @@ export default {
       filtredProductsAndCounts: [],
       productFilter: '',
       radioGroup: 'Toutes',
+      sortBy: [],
     };
   },
   beforeMount() {
@@ -556,6 +557,7 @@ export default {
       }
     },
     changeZoneShow(selectedZone) {
+      this.sortBy = [];
       forEach(this.zones, (zone) => {
         // eslint-disable-next-line no-param-reassign
         zone.show = selectedZone === 'Toutes' || zone.name === selectedZone;

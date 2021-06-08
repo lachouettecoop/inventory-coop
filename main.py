@@ -2,19 +2,12 @@ import os
 
 from bson import ObjectId
 from eve import Eve
-from flask import abort
-from flask import jsonify
-from flask import send_file
+from flask import abort, jsonify, send_file
 
-from api.login import blueprint as login_blueprint
 from api.login import JwtTokenAuth
-from api.settings import ACTIVE
-from api.settings import CLOSED
-from api.settings import DATE_FORMAT
-from api.settings import ITEM_METHODS
-from api.settings import RESOURCE_METHODS
-from api.settings import X_HEADERS
+from api.login import blueprint as login_blueprint
 from api.odoo import odoo_products
+from api.settings import ACTIVE, CLOSED, DATE_FORMAT, ITEM_METHODS, RESOURCE_METHODS, X_HEADERS
 
 
 def on_insert_inventories_event(items):
@@ -53,9 +46,7 @@ SETTINGS = os.path.abspath("./api/settings.py")
 if NO_AUTH:
     app = Eve(__name__, settings=SETTINGS, static_folder="./client/dist/")
 else:
-    app = Eve(
-        __name__, auth=JwtTokenAuth, settings=SETTINGS, static_folder="./client/dist/"
-    )
+    app = Eve(__name__, auth=JwtTokenAuth, settings=SETTINGS, static_folder="./client/dist/")
     app.register_blueprint(login_blueprint)
 
 app.on_insert_counts += on_insert_counts_event
