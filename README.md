@@ -23,7 +23,7 @@ docker-compose exec db bash
 Then launch a mongo shell as root
 ```
 mongo -u root -p <root password>
-``` 
+```
 
 Finally execute command :
 ```
@@ -53,23 +53,18 @@ MONGO_INITDB_ROOT_PASSWORD=...  # Root password
 
 API docker needs some environment variables defined in file api.env.
 ```bash
+MONGO_HOST=db
 MONGO_USERNAME=user
-MONGO_PASSWORD=...              # User password
+MONGO_PASSWORD=...                # User password
 
-NO_AUTH=False                   # Disable login with LDAP (default=False)
-ALLOW_ALL_ORIGINS=False         # Disable CORS (default=False).
-                                # You may need that if you run API and CLIENT separately (dev).
+JWT_SECRET=...                    # Secret for JSON Web Tokens signature
+LDAP_ADMIN_PASS=...               # LDAP admin password
 
-ADMIN_USERS='bill@gate.com'     # List of users with admin rights
-LDAP_ADMIN_PASS=...             # LDAP admin password
+ADMIN_USERS="bill@gate.com"       # List of users with admin rights
 
-JWT_ALGORITHM=HS256             # JSON Web Tokens signature algorithm (default=HS256)
-JWT_EXPIRE_OFFSET=43200         # Token validity duration (default=43200)
-JWT_SECRET=...                  # Secret for JSON Web Tokens signature
-LDAP_SERVER=...                 # LDAP server URL (default=Chouettes COOP's one)
-LDAP_BASE_DN=...                # LDAP base distinguished name (default=Chouettes COOP's one)
-LDAP_SEARCH_DN=...              # LDAP search distinguished name (default=Chouettes COOP's one)
-LDAP_USER_DN=...                # LDAP user distinguished name (default=Chouettes COOP's one)
+ODOO_URL=https://odoo.fr/jsonrpc  # Odoo jsonrc URL
+ODOO_LOGIN=...                    # Odoo user login
+ODOO_PASSWORD=...                 # Odoo user password
 ```
 Then run
 ```bash
@@ -85,8 +80,6 @@ It shall respond `{"name":"inventory-coop","status":"ok"}`
 ### Development
 This API is based on [python eve](http://docs.python-eve.org/en/latest/).
 ```bash
-virtualenv -p /usr/bin/python3.7 .venv
-source .venv/bin/activate
-pip install -r ./requirements.txt
-python app.py
+poetry install
+poetry run python main.py
 ```

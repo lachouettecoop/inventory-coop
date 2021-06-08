@@ -68,12 +68,6 @@
     </v-alert>
     <v-flex>
       <v-card>
-        <input type="file" ref="file" style="display: none" accept=".csv" @change="parseFile">
-        <v-btn fab small right absolute
-               v-if="user.role==='admin' && inventory.state===0"
-               @click="$refs.file.click()">
-          <v-icon>fas fa-file-import</v-icon>
-        </v-btn>
         <v-btn fab small right absolute
                v-if="user.role==='admin' && inventory.state===2"
                @click="saveFile()">
@@ -89,13 +83,13 @@
             :items="filtredProductsAndCounts"
             :headers="headers"
             :items-per-page="15"
-            multi-sort
+            :sort-by="sortBy"
           >
             <template v-slot:body="{ items }">
               <tbody>
                 <tr v-for="item in items" :key="item.name">
                   <td class="text-left text-no-wrap">{{ item.name }}</td>
-                  <td class="text-left">{{ item.barcode }}</td>
+                  <td class="text-left">{{ item.barcode ? item.barcode : "-"}}</td>
                   <td class="text-center">{{ item.qty_in_odoo }}</td>
                   <td :class="errorOdooClass(item)">{{ item.errOdoo }}</td>
                   <template v-if="inventory.state<2">
@@ -126,6 +120,7 @@
                   <template v-else>
                     <td>{{ item.totalQty }}</td>
                     <td>{{ asEuro(item.totalQty * item.cost) }}</td>
+                    <td>{{ asEuro(item.errOdoo * item.cost) }}</td>
                   </template>
                 </tr>
               </tbody>
@@ -140,17 +135,13 @@
 <script>
 import Papa from 'papaparse';
 import {
-  clone, includes, isEmpty, find, findIndex, forEach, get, sortBy, trim, filter,
+  clone, includes, isEmpty, find, findIndex, forEach, get, sortBy, filter,
 } from 'lodash';
 import moment from 'moment';
 
 const ODOO_ID_COLUMN = 'line_ids/product_id/.id';
-const ODOO_ID_COLUMN_RE = '.*product_variant_ids/?.id';
 const NAME_COLUMN = 'name';
-const BARCODE_COLUMN = 'barcode';
-const COST_COLUMN = 'standard_price';
 const QTY_COLUMN = 'line_ids/product_qty';
-const QTY_COLUMN_RE = '.*qty_available';
 const LOCATION_COLUMN = 'location_id/id';
 const LOCATION_VALUE = 'stock.stock_location_stock';
 const PRODUCT_UOM_COLUMN = 'line_ids/product_uom_id/id';
@@ -177,6 +168,7 @@ export default {
       filtredProductsAndCounts: [],
       productFilter: '',
       radioGroup: 'Toutes',
+      sortBy: [],
     };
   },
   beforeMount() {
@@ -281,6 +273,12 @@ export default {
           align: 'center',
           class: 'text-no-wrap',
         });
+        headers.push({
+          text: 'Valeur de l\'écart',
+          value: 'errOdoo',
+          align: 'center',
+          class: 'text-no-wrap',
+        });
       } else {
         this.valuesToDisplay().forEach((value) => {
           headers.push({
@@ -317,7 +315,7 @@ export default {
       });
     },
     errorOdooClass(product) {
-      if (product.errOdoo > 0) {
+      if (product.errOdoo !== 0) {
         return 'text-xs-center font-weight-bold amber lighten-4';
       }
       return 'text-xs-center font-weight-bold';
@@ -466,7 +464,7 @@ export default {
         totalQty += zoneQty;
       });
       // eslint-disable-next-line no-param-reassign
-      productAndCounts.errOdoo = this.round(Math.abs(totalQty - productAndCounts.qty_in_odoo), 3);
+      productAndCounts.errOdoo = this.round(totalQty - productAndCounts.qty_in_odoo, 3);
       // eslint-disable-next-line no-param-reassign
       productAndCounts.totalQty = totalQty;
     },
@@ -559,6 +557,7 @@ export default {
       }
     },
     changeZoneShow(selectedZone) {
+      this.sortBy = [];
       forEach(this.zones, (zone) => {
         // eslint-disable-next-line no-param-reassign
         zone.show = selectedZone === 'Toutes' || zone.name === selectedZone;
@@ -574,67 +573,6 @@ export default {
         };
       }
       return index;
-    },
-    parseFile(e) {
-      Papa.parse(e.target.files[0], {
-        complete: (results) => {
-          const nameIndex = this.getIndex(results.data[0], NAME_COLUMN);
-          const barcodeIndex = this.getIndex(results.data[0], BARCODE_COLUMN);
-          const qtyIndex = this.getIndex(results.data[0], QTY_COLUMN_RE);
-          const odooIdIndex = this.getIndex(results.data[0], ODOO_ID_COLUMN_RE);
-          const costIndex = findIndex(
-            results.data[0],
-            (x) => RegExp(COST_COLUMN).test(x),
-          );
-          if (nameIndex < 0
-            || barcodeIndex < 0
-            || qtyIndex < 0
-            || odooIdIndex < 0) {
-            return;
-          }
-          const productList = [];
-          for (let i = 1; i < results.data.length; i += 1) {
-            const name = trim(results.data[i][nameIndex]);
-            const barcode = trim(results.data[i][barcodeIndex]);
-            const odooId = trim(results.data[i][odooIdIndex]);
-            let qtyStr = trim(results.data[i][qtyIndex]);
-            if (qtyStr.startsWith("'-")) {
-              qtyStr = qtyStr.slice(1);
-            }
-            let qty = Number(qtyStr);
-            let cost = costIndex >= 0 ? Number(trim(results.data[i][costIndex])) : 0;
-            if (!isEmpty(name) && !isEmpty(odooId) && !isEmpty(barcode)) {
-              if (!qty) {
-                qty = 0;
-              }
-              if (!cost) {
-                cost = 0;
-              }
-              productList.push({
-                name,
-                barcode,
-                qty_in_odoo: Number(qty),
-                odoo_id: odooId,
-                cost,
-                inventory: this.inventory.id,
-              });
-            }
-          }
-          this.$store.dispatch({
-            type: 'products/createResource',
-            resource: productList,
-          }).then(() => {
-            this.changeState(1);
-          });
-        },
-        error: (error) => {
-          this.alert = {
-            show: true,
-            message: `Error during CSV parsing: ${error}`,
-            type: 'error',
-          };
-        },
-      });
     },
     saveFile() {
       const m = moment();

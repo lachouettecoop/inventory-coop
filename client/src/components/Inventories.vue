@@ -10,6 +10,45 @@
                  @click="addInventory">
             <v-icon small>fa-plus</v-icon>
           </v-btn>
+          <v-dialog v-if="user.role==='admin'"
+                    v-model="addDialog" persistent max-width="290">
+            <template v-slot:activator="{ on }">
+              <v-btn fab
+                     absolute
+                     right
+                     color="teal darken-3"
+                     class="white--text"
+                     v-on="on"
+                     slot="activator">
+                <v-icon small>fa-plus</v-icon>
+              </v-btn>
+            </template>
+            <v-card v-if="addInProgress">
+              <v-card-text>
+                Veuillez patienter, cette requette peut prendre un certain temps.
+              </v-card-text>
+              <v-card-actions class="justify-center">
+                <v-progress-circular indeterminate color="primary"/>
+              </v-card-actions>
+            </v-card>
+            <v-card v-else>
+              <v-card-text>
+                Ceci créera un l'inventaire  à partir des données contenues dans Odoo.
+                Êtes-vous sur de vouloir continuer ?
+              </v-card-text>
+              <v-card-actions>
+                <v-btn color="grey"
+                       @click.native="addDialog=false">
+                  Annuler
+                </v-btn>
+                <v-spacer/>
+                <v-btn color="red lighten-2"
+                       @click="addInventory">
+                  Confirmer
+                </v-btn>
+              </v-card-actions>
+            </v-card>
+          </v-dialog>
         </v-card-title>
         <v-list>
           <template v-for="inventory in inventories">
@@ -40,7 +79,7 @@
                   </v-icon>
                 </v-btn>
                 <v-dialog v-if="user.role==='admin'"
-                          v-model="dialog" persistent max-width="290">
+                          v-model="delDialog" persistent max-width="290">
                   <template v-slot:activator="{ on }">
                     <v-btn fab
                            small
@@ -59,7 +98,7 @@
                     </v-card-text>
                     <v-card-actions>
                       <v-btn color="grey"
-                             @click.native="dialog=false">
+                             @click.native="delDialog=false">
                         Annuler
                       </v-btn>
                       <v-spacer/>
@@ -86,7 +125,9 @@ export default {
   name: 'Inventories',
   data() {
     return {
-      dialog: false,
+      addDialog: false,
+      addInProgress: false,
+      delDialog: false,
       serverUrl: '',
     };
   },
@@ -110,9 +151,13 @@ export default {
       this.$router.push({ name: 'Inventory', params: { id: inventory.id } });
     },
     addInventory() {
+      this.addInProgress = true;
       this.$store.dispatch({
         type: 'inventories/createResource',
         resource: {},
+      }).finally(() => {
+        this.addDialog = false;
+        this.addInProgress = false;
       });
     },
     removeInventory(inventory) {
@@ -120,7 +165,7 @@ export default {
         type: 'inventories/deleteResource',
         resource: inventory,
       });
-      this.dialog = false;
+      this.delDialog = false;
     },
   },
 };
