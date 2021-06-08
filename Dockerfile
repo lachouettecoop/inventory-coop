@@ -14,4 +14,5 @@ RUN  apt-get update &&\
      pip install poetry &&\
      poetry install &&\
      apt remove -y gcc
-CMD ["poetry", "run", "gunicorn", "-w", "4", "-b", "0.0.0.0:80", "main:app"]
+
+CMD ["poetry", "run", "gunicorn", "--access-logfile", "-", "--error-logfile", "-", "-w", "4", "-b", "0.0.0.0:80", "main:app"]
