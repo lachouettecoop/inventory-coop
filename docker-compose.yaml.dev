@@ -2,10 +2,10 @@ version: '2.1'
 
 services:
   db:
-    image: mongo
+    image: mongo:4.2.0
     restart: unless-stopped
     ports:
-      - 27017:27017
+      - "27017:27017"
     env_file:
     - db.env
     volumes:
@@ -21,6 +21,6 @@ services:
       STATIC_PATH: /app/client/dist/static
       EVE_SETTINGS: /app/api/settings.py
     ports:
-      - 8000:80/tcp
+      - "8000:80/tcp"
     links:
       - db:db

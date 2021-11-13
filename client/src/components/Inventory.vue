@@ -87,7 +87,7 @@
           >
             <template v-slot:body="{ items }">
               <tbody>
-                <tr v-for="item in items" :key="item.name">
+                <tr v-for="item in items" :key="item.odoo_id">
                   <td class="text-left text-no-wrap">{{ item.name }}</td>
                   <td class="text-left">{{ item.barcode ? item.barcode : "-"}}</td>
                   <td class="text-center">{{ item.qty_in_odoo }}</td>
@@ -340,13 +340,20 @@ export default {
         counter: result[1],
       };
     },
+    getCount(productAndCounts, counterAtZone) {
+      let count = get(productAndCounts, counterAtZone, 0);
+      if (typeof count === 'string' || count instanceof String) {
+        count = parseFloat(count.replace(',', '.'));
+      }
+      return count;
+    },
     changeCounts(productAndCounts) {
       let modified = false;
       this.zones.forEach((zone) => {
         zone.counters.forEach((counter) => {
           const counterAtZone = `${zone.name}${SEPARATOR}${counter.name}`;
           const zoneIndex = findIndex(productAndCounts.zones, { name: zone.name });
-          const qty = +get(productAndCounts, counterAtZone, 0);
+          const qty = +this.getCount(productAndCounts, counterAtZone);
           if (zoneIndex < 0) {
             modified = modified || (qty !== 0);
           } else {
@@ -383,7 +390,7 @@ export default {
       this.zones.forEach((zone) => {
         zone.counters.forEach((counter) => {
           const counterAtZone = `${zone.name}${SEPARATOR}${counter.name}`;
-          const qty = +get(productAndCounts, counterAtZone, 0);
+          const qty = +this.getCount(productAndCounts, counterAtZone);
           const zoneIndex = findIndex(productAndCounts.zones, { name: zone.name });
           if (zoneIndex < 0 && qty > 0) {
             counts.push({ counter: counter.name, zone: zone.name, qty });
@@ -517,13 +524,18 @@ export default {
     updateZones(count) {
       let zoneIndex = findIndex(this.zones, { name: count.zone });
       if (zoneIndex < 0) {
-        zoneIndex = this.zones.push({ name: count.zone, show: true, counters: [] }) - 1;
+        zoneIndex = this.zones.push({
+          name: count.zone,
+          index: parseInt(count.zone, 10),
+          show: this.radioGroup === 'Toutes' || count.zone === this.radioGroup,
+          counters: [],
+        }) - 1;
       }
       const counterIndex = findIndex(this.zones[zoneIndex].counters, { name: count.counter });
       if (counterIndex < 0) {
         this.zones[zoneIndex].counters.push({ name: count.counter });
       }
-      this.zones = sortBy(this.zones, ['name']);
+      this.zones = sortBy(this.zones, ['index']);
       this.zones.forEach((zone) => {
         zone.counters = sortBy(zone.counters, ['name']); // eslint-disable-line no-param-reassign
       });
@@ -548,9 +560,17 @@ export default {
       if (isEmpty(this.productFilter)) {
         this.filtredProductsAndCounts = this.productsAndCounts;
       } else {
+        const filters = this.productFilter.split(/(\s+)/).filter((e) => e.trim().length > 0);
         this.productsAndCounts.forEach((product) => {
-          if (product.name.toLowerCase().search(this.productFilter.toLowerCase()) >= 0
-            || product.barcode.toLowerCase().search(this.productFilter.toLowerCase()) >= 0) {
+          let keepThisProduct = true;
+          for (let i = 0; i < filters.length; i += 1) {
+            if (product.name.toLowerCase().search(filters[i]) < 0
+              && product.barcode.toLowerCase().search(filters[i]) < 0) {
+              keepThisProduct = false;
+              break;
+            }
+          }
+          if (keepThisProduct) {
             this.filtredProductsAndCounts.push(product);
           }
         });
