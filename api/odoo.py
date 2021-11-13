@@ -50,8 +50,8 @@ def _consolidate(products):
         p.pop("id")
         p["qty_in_odoo"] = round(p["qty_available"], 3)
         p.pop("qty_available")
-        p["cost"] = round(p["theoritical_price"], 2)
-        p.pop("theoritical_price")
+        p["cost"] = round(p["standard_price"], 2)
+        p.pop("standard_price")
         if not p["barcode"]:
             p["barcode"] = ""
     return products
@@ -61,14 +61,14 @@ def odoo_products():
     products = OdooAPI().search_read(
         "product.product",
         cond=[
-            ["theoritical_price", ">", 0],
+            ["standard_price", ">", 0],
         ],
         fields=[
             "barcode",
             "id",
             "name",
             "qty_available",
-            "theoritical_price",
+            "standard_price",
         ],
     )
     return _consolidate(products)

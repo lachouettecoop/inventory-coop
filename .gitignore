@@ -10,5 +10,6 @@ volumes/
 .idea/
 
 # Docker environment files
+docker-compose.yaml
 api.env
 db.env

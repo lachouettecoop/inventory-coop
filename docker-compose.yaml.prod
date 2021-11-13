@@ -2,7 +2,7 @@ version: '2.1'
 
 services:
   db:
-    image: mongo
+    image: mongo:4.2.0
     restart: unless-stopped
     env_file:
     - db.env
