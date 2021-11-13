@@ -135,7 +135,7 @@
 <script>
 import Papa from 'papaparse';
 import {
-  clone, includes, isEmpty, find, findIndex, forEach, get, sortBy, filter,
+  clone, deburr, includes, isEmpty, find, findIndex, forEach, get, sortBy, filter,
 } from 'lodash';
 import moment from 'moment';
 
@@ -560,12 +560,17 @@ export default {
       if (isEmpty(this.productFilter)) {
         this.filtredProductsAndCounts = this.productsAndCounts;
       } else {
-        const filters = this.productFilter.split(/(\s+)/).filter((e) => e.trim().length > 0);
+        const filters = this.productFilter
+          .split(/(\s+)/)
+          .filter((e) => e.trim().length > 0)
+          .map((f) => deburr(f.toLowerCase()));
         this.productsAndCounts.forEach((product) => {
           let keepThisProduct = true;
+          const normalizedProductName = deburr(product.name.toLowerCase());
           for (let i = 0; i < filters.length; i += 1) {
-            if (product.name.toLowerCase().search(filters[i]) < 0
-              && product.barcode.toLowerCase().search(filters[i]) < 0) {
+            const f = filters[i];
+            if (normalizedProductName.search(f) < 0
+              && product.barcode.search(f) < 0) {
               keepThisProduct = false;
               break;
             }
