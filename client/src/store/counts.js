@@ -1,24 +1,80 @@
 import Vue from 'vue';
+import axios from 'axios';
+import { forEach, isArray, isEmpty } from 'lodash';
 
-const initialState = {
-  count: null,
-  connected: false,
-  error: null,
-  starting_sid: null,
-  current_sid: null,
+import { apiUrl } from '@/mixin/url';
+import authHeader from '@/mixin/authHeader';
+
+const addCount = (count, state, forcePush = false) => {
+  console.log({ count, forcePush });
+  // eslint-disable-next-line no-param-reassign,no-underscore-dangle
+  count.id = count._id;
+  const existingItem = forcePush ? undefined : state.dataMap.get(count.id);
+  if (existingItem) {
+    forEach(Object.keys(count), (propertyName) => {
+      existingItem[propertyName] = count[propertyName];
+    });
+  } else {
+    state.dataMap.set(count.id, count);
+    state.data.push(count);
+  }
 };
 
-const getters = {
-  count: (state) => state.count,
-  connected: (state) => state.connected,
-  error: (state) => state.error,
+const onError = (commit, error, reject) => {
+  commit('setError', error);
+  commit('setDataLoading', false);
+  reject(error);
 };
 
 const counts = {
   namespaced: true,
-  state: initialState,
-  getters,
+  state: {
+    data: [],
+    dataMap: new Map(),
+    connected: false,
+    isLoading: false,
+    error: null,
+    starting_sid: null,
+    current_sid: null,
+  },
+  getters: {
+    data: (state) => state.data,
+    connected: (state) => state.connected,
+    isLoading: (state) => state.loading,
+    error: (state) => state.error,
+  },
   actions: {
+    getResourcesWhere({ commit }, { where }) {
+      commit('setDataLoading', true);
+      return new Promise((resolve, reject) => {
+        axios.get(`${apiUrl()}/counts`, {
+          headers: authHeader(),
+          params: { where: JSON.stringify(where) },
+        }).then(({ data }) => {
+          commit('setResources', data);
+          commit('setDataLoading', false);
+          resolve(data);
+        }).catch((error) => {
+          onError(commit, error, reject);
+        });
+      });
+    },
+    createResource({ commit }, { resource }) {
+      commit('setDataLoading', true);
+      return new Promise((resolve, reject) => {
+        axios.post(
+          `${apiUrl()}/counts`,
+          resource,
+          { headers: authHeader() },
+        ).then(({ data }) => {
+          commit('setResources', data);
+          commit('setDataLoading', false);
+          resolve(data);
+        }).catch((error) => {
+          onError(commit, error, reject);
+        });
+      });
+    },
     WS_connect(context) {
       context.commit('setConnected', true);
       // set sids
@@ -30,19 +86,29 @@ const counts = {
     WS_disconnect(context) {
       context.commit('setConnected', false);
     },
-    WS_new_count(context, count) {
+    WS_new_count(context, data) {
+      console.log({ data });
       context.commit('resetError');
-      context.commit('setScaleStatus', count);
+      context.commit('setResources', data);
     },
     WS_error(context, message) {
+      context.commit('resetError');
       context.commit('setError', message.error);
     },
   },
   mutations: {
-    setScaleStatus(state, scaleStatus) {
-      state.healthy = scaleStatus.healthy;
-      state.weight = scaleStatus.weight;
-      state.tare = scaleStatus.tare;
+    setDataLoading(state, value) {
+      state.loading = value;
+    },
+    setResources(state, data) {
+      if (isArray(data.items)) {
+        const forcePush = isEmpty(state.dataMap);
+        forEach(data.items, (item) => {
+          addCount(item, state, forcePush);
+        });
+      } else {
+        addCount(data, state);
+      }
     },
     setConnected(state, payload) {
       state.connected = payload;
@@ -55,7 +121,6 @@ const counts = {
     },
     setError(state, payload) {
       state.error = payload;
-      state.count = null;
     },
     resetError(state) {
       state.error = null;

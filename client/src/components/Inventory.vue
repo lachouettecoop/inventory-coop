@@ -185,12 +185,6 @@ export default {
       this.applyFilter();
       this.loadCounts();
     });
-    this.interval = setInterval(() => {
-      this.loadCounts();
-    }, 5000); // refresh each 5s
-  },
-  beforeDestroy() {
-    clearInterval(this.interval);
   },
   watch: {
     products() {
@@ -224,6 +218,7 @@ export default {
       return filter(products, { inventory: this.inventoryId });
     },
     counts() {
+      console.log('counts');
       const counts = this.$store.getters['counts/data'];
       return filter(counts, { inventory: this.inventoryId });
     },

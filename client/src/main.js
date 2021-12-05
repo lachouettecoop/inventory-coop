@@ -5,13 +5,13 @@ import router from './router';
 import store from './store';
 import vuetify from './plugins/vuetify';
 
-import serverUrl from './mixin/url';
+import { hostUrl } from './mixin/url';
 
 Vue.config.productionTip = false;
 
 Vue.use(new VueSocketIO({
   debug: false,
-  connection: serverUrl(),
+  connection: hostUrl(),
   vuex: {
     store,
     actionPrefix: 'WS_',

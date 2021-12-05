@@ -3,7 +3,7 @@ import {
   forEach, isArray, isEmpty, reduce,
 } from 'lodash';
 
-import serverUrl from '@/mixin/url';
+import { apiUrl } from '@/mixin/url';
 import authHeader from '@/mixin/authHeader';
 
 const getters = {
@@ -22,7 +22,7 @@ const getActions = (key) => ({
     commit('setDataLoading', true);
     return new Promise((resolve, reject) => {
       axios.get(
-        `${serverUrl()}/${key}`, {
+        `${apiUrl()}/${key}`, {
           headers: authHeader(),
         },
       ).then(({ data }) => {
@@ -37,7 +37,7 @@ const getActions = (key) => ({
   getResourcesWhere({ commit }, { where }) {
     commit('setDataLoading', true);
     return new Promise((resolve, reject) => {
-      axios.get(`${serverUrl()}/${key}`, {
+      axios.get(`${apiUrl()}/${key}`, {
         headers: authHeader(),
         params: { where: JSON.stringify(where) },
       }).then(({ data }) => {
@@ -51,23 +51,23 @@ const getActions = (key) => ({
   },
   fetchResource({ commit }, { id }) {
     commit('setDataLoading', true);
-    axios.get(
-      `${serverUrl()}/${key}/${id}`, {
-        headers: authHeader(),
-      },
-    ).then(({ data }) => {
-      commit('setResources', data);
-      commit('setDataLoading', false);
-    }).catch((error) => {
-      commit('setDataError', error);
-      commit('setDataLoading', false);
+    return new Promise((resolve, reject) => {
+      axios.get(
+        `${apiUrl()}/${key}/${id}`,
+        { headers: authHeader() },
+      ).then(({ data }) => {
+        commit('setResources', data);
+        commit('setDataLoading', false);
+      }).catch((error) => {
+        onError(key, commit, error, reject);
+      });
     });
   },
   createResource({ commit }, { resource }) {
     commit('setDataLoading', true);
     return new Promise((resolve, reject) => {
       axios.post(
-        `${serverUrl()}/${key}`,
+        `${apiUrl()}/${key}`,
         resource,
         { headers: authHeader() },
       ).then(({ data }) => {
@@ -84,7 +84,7 @@ const getActions = (key) => ({
     return new Promise((resolve, reject) => {
       axios({
         method: 'patch',
-        url: `${serverUrl()}/${key}/${resource.id}`,
+        url: `${apiUrl()}/${key}/${resource.id}`,
         responseType: 'json',
         headers: { 'If-Match': resource.etag, ...authHeader() },
         data: payload,
@@ -102,7 +102,7 @@ const getActions = (key) => ({
     return new Promise((resolve, reject) => {
       axios({
         method: 'delete',
-        url: `${serverUrl()}/${key}/${resource.id}`,
+        url: `${apiUrl()}/${key}/${resource.id}`,
         responseType: 'json',
         headers: { 'If-Match': resource.etag, ...authHeader() },
       }).then(() => {
@@ -157,7 +157,6 @@ const apiModules = reduce(
   [
     'inventories',
     'products',
-    'counts',
   ],
   (result, resourceKey) => {
     result[resourceKey] = { // eslint-disable-line no-param-reassign

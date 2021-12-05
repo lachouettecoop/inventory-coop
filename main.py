@@ -1,9 +1,9 @@
 import os
 
-from bson import ObjectId
+from bson import ObjectId, json_util
 from eve import Eve
 from flask import abort, jsonify, send_file
-from flask_socketio import SocketIO, emit
+from flask_socketio import SocketIO
 
 from api.login import JwtTokenAuth
 from api.login import blueprint as login_blueprint
@@ -44,7 +44,10 @@ def on_insert_counts_event(items):
 
 def on_inserted_counts_event(items):
     for item in items:
-        emit("new_count", item)
+        socket_io.emit(
+            "new_count",
+            item,
+        )
 
 
 ALLOW_ALL_ORIGINS = os.environ.get("ALLOW_ALL_ORIGINS", "False").lower() in ["true", "1"]
@@ -55,9 +58,14 @@ if NO_AUTH:
 else:
     app = Eve(__name__, auth=JwtTokenAuth, settings=SETTINGS, static_folder="./client/dist/")
     app.register_blueprint(login_blueprint)
-socket_io = SocketIO(app, cors_allowed_origins="*" if ALLOW_ALL_ORIGINS else None)
+socket_io = SocketIO(
+    app,
+    json=json_util,
+    cors_allowed_origins="*" if ALLOW_ALL_ORIGINS else [],
+)
 
 app.on_insert_counts += on_insert_counts_event
+app.on_inserted_counts += on_inserted_counts_event
 app.on_insert_inventories += on_insert_inventories_event
 app.on_inserted_inventories += on_inserted_inventories_event
 
