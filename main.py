@@ -1,6 +1,6 @@
 import os
 
-from bson import ObjectId, json_util
+from bson import ObjectId, json_util, son
 from eve import Eve
 from flask import abort, jsonify, send_file
 from flask_socketio import SocketIO
@@ -23,13 +23,17 @@ def on_insert_inventories_event(items):
 def on_inserted_inventories_event(items):
     db = app.data.driver.db
     col_products = db["products"]
-
-    products = odoo_products()
-    for item in items:
-        inventory_id = item["_id"]
-        for p in products:
-            p["inventory"] = inventory_id
-        col_products.insert_many(products)
+    try:
+        products = odoo_products()
+        for item in items:
+            inventory_id = item["_id"]
+            for p in products:
+                p["inventory"] = inventory_id
+            col_products.insert_many(products)
+    except Exception:
+        for item in items:
+            db["inventories"].delete_one(filter=son.SON({"_id": item["_id"]}))
+        raise
 
 
 def on_insert_counts_event(items):

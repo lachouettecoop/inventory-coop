@@ -10,8 +10,7 @@
                  @click="addInventory">
             <v-icon small>fa-plus</v-icon>
           </v-btn>
-          <v-dialog v-if="user.role==='admin'"
-                    v-model="addDialog" persistent max-width="290">
+          <v-dialog v-if="user.role==='admin'" v-model="addDialog" persistent max-width="290">
             <template v-slot:activator="{ on }">
               <v-btn fab
                      absolute
@@ -49,6 +48,25 @@
               </v-card-actions>
             </v-card>
           </v-dialog>
+          <v-dialog v-if="user.role==='admin'" v-model="delDialog" persistent max-width="290">
+            <v-card>
+              <v-card-text>
+                Ceci supprimera l'inventaire et tous les comptes associés.
+                Êtes-vous sur de vouloir continuer ?
+              </v-card-text>
+              <v-card-actions>
+                <v-btn color="grey"
+                       @click.native="delDialog=false">
+                  Annuler
+                </v-btn>
+                <v-spacer/>
+                <v-btn color="red lighten-2"
+                       @click="removeInventory()">
+                  Confirmer
+                </v-btn>
+              </v-card-actions>
+            </v-card>
+          </v-dialog>
         </v-card-title>
         <v-list>
           <template v-for="inventory in inventories">
@@ -78,37 +96,12 @@
                     fa-eye
                   </v-icon>
                 </v-btn>
-                <v-dialog v-if="user.role==='admin'"
-                          v-model="delDialog" persistent max-width="290">
-                  <template v-slot:activator="{ on }">
-                    <v-btn fab
-                           small
-                           v-on="on"
-                           slot="activator">
-                      <v-icon color="red lighten-2"
-                              small>
-                        fas fa-trash
-                      </v-icon>
-                    </v-btn>
-                  </template>
-                  <v-card>
-                    <v-card-text>
-                      Ceci supprimera l'inventaire et tous les comptes associés.
-                      Êtes-vous sur de vouloir continuer ?
-                    </v-card-text>
-                    <v-card-actions>
-                      <v-btn color="grey"
-                             @click.native="delDialog=false">
-                        Annuler
-                      </v-btn>
-                      <v-spacer/>
-                      <v-btn color="red lighten-2"
-                             @click="removeInventory(inventory)">
-                        Confirmer
-                      </v-btn>
-                    </v-card-actions>
-                  </v-card>
-                </v-dialog>
+                <v-btn fab small @click="delInventory=inventory;delDialog=true">
+                  <v-icon color="red lighten-2"
+                          small>
+                    fas fa-trash
+                  </v-icon>
+                </v-btn>
               </div>
             </v-list-item>
           </template>
@@ -128,6 +121,7 @@ export default {
       addDialog: false,
       addInProgress: false,
       delDialog: false,
+      delInventory: null,
       serverUrl: '',
     };
   },
@@ -160,11 +154,12 @@ export default {
         this.addInProgress = false;
       });
     },
-    removeInventory(inventory) {
+    removeInventory() {
       this.$store.dispatch({
         type: 'inventories/deleteResource',
-        resource: inventory,
+        resource: this.delInventory,
       });
+      this.delInventory = null;
       this.delDialog = false;
     },
   },
