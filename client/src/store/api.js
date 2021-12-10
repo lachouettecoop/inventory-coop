@@ -1,9 +1,9 @@
 import axios from 'axios';
 import {
-  forEach, isArray, isEmpty, reduce,
+  forEach, isArray, reduce,
 } from 'lodash';
 
-import serverUrl from '@/mixin/url';
+import { apiUrl } from '@/mixin/url';
 import authHeader from '@/mixin/authHeader';
 
 const getters = {
@@ -11,7 +11,7 @@ const getters = {
   isLoading: (state) => state.loading,
 };
 
-const onError = (key, commit, error, reject) => {
+const onError = (commit, error, reject) => {
   commit('setDataError', error);
   commit('setDataLoading', false);
   reject(error);
@@ -22,7 +22,7 @@ const getActions = (key) => ({
     commit('setDataLoading', true);
     return new Promise((resolve, reject) => {
       axios.get(
-        `${serverUrl()}/${key}`, {
+        `${apiUrl()}/${key}`, {
           headers: authHeader(),
         },
       ).then(({ data }) => {
@@ -30,14 +30,14 @@ const getActions = (key) => ({
         commit('setDataLoading', false);
         resolve(data);
       }).catch((error) => {
-        onError(key, commit, error, reject);
+        onError(commit, error, reject);
       });
     });
   },
   getResourcesWhere({ commit }, { where }) {
     commit('setDataLoading', true);
     return new Promise((resolve, reject) => {
-      axios.get(`${serverUrl()}/${key}`, {
+      axios.get(`${apiUrl()}/${key}`, {
         headers: authHeader(),
         params: { where: JSON.stringify(where) },
       }).then(({ data }) => {
@@ -45,29 +45,29 @@ const getActions = (key) => ({
         commit('setDataLoading', false);
         resolve(data);
       }).catch((error) => {
-        onError(key, commit, error, reject);
+        onError(commit, error, reject);
       });
     });
   },
   fetchResource({ commit }, { id }) {
     commit('setDataLoading', true);
-    axios.get(
-      `${serverUrl()}/${key}/${id}`, {
-        headers: authHeader(),
-      },
-    ).then(({ data }) => {
-      commit('setResources', data);
-      commit('setDataLoading', false);
-    }).catch((error) => {
-      commit('setDataError', error);
-      commit('setDataLoading', false);
+    return new Promise((resolve, reject) => {
+      axios.get(
+        `${apiUrl()}/${key}/${id}`,
+        { headers: authHeader() },
+      ).then(({ data }) => {
+        commit('setResources', data);
+        commit('setDataLoading', false);
+      }).catch((error) => {
+        onError(commit, error, reject);
+      });
     });
   },
   createResource({ commit }, { resource }) {
     commit('setDataLoading', true);
     return new Promise((resolve, reject) => {
       axios.post(
-        `${serverUrl()}/${key}`,
+        `${apiUrl()}/${key}`,
         resource,
         { headers: authHeader() },
       ).then(({ data }) => {
@@ -75,7 +75,7 @@ const getActions = (key) => ({
         commit('setDataLoading', false);
         resolve(data);
       }).catch((error) => {
-        onError(key, commit, error, reject);
+        onError(commit, error, reject);
       });
     });
   },
@@ -84,7 +84,7 @@ const getActions = (key) => ({
     return new Promise((resolve, reject) => {
       axios({
         method: 'patch',
-        url: `${serverUrl()}/${key}/${resource.id}`,
+        url: `${apiUrl()}/${key}/${resource.id}`,
         responseType: 'json',
         headers: { 'If-Match': resource.etag, ...authHeader() },
         data: payload,
@@ -93,7 +93,7 @@ const getActions = (key) => ({
         commit('setDataLoading', false);
         resolve(data);
       }).catch((error) => {
-        onError(key, commit, error, reject);
+        onError(commit, error, reject);
       });
     });
   },
@@ -102,7 +102,7 @@ const getActions = (key) => ({
     return new Promise((resolve, reject) => {
       axios({
         method: 'delete',
-        url: `${serverUrl()}/${key}/${resource.id}`,
+        url: `${apiUrl()}/${key}/${resource.id}`,
         responseType: 'json',
         headers: { 'If-Match': resource.etag, ...authHeader() },
       }).then(() => {
@@ -110,16 +110,16 @@ const getActions = (key) => ({
         commit('removeData', resource.id);
         resolve();
       }).catch((error) => {
-        onError(key, commit, error, reject);
+        onError(commit, error, reject);
       });
     });
   },
 });
 
-const setItem = (item, state, forcePush = false) => {
+const setItem = (item, state) => {
   // eslint-disable-next-line no-param-reassign,no-underscore-dangle
   item.id = item._id;
-  const existingItem = forcePush ? undefined : state.dataMap.get(item.id);
+  const existingItem = state.dataMap.get(item.id);
   if (existingItem) {
     forEach(Object.keys(item), (propertyName) => {
       existingItem[propertyName] = item[propertyName];
@@ -136,10 +136,13 @@ const mutations = {
   },
   setResources(state, data) {
     if (isArray(data.items)) {
-      const forcePush = isEmpty(state.dataMap);
+      state.dataMap.clear();
       forEach(data.items, (item) => {
-        setItem(item, state, forcePush);
+        // eslint-disable-next-line no-param-reassign,no-underscore-dangle
+        item.id = item._id;
+        state.dataMap.set(item.id, item);
       });
+      state.data = Array.from(state.dataMap.values());
     } else {
       setItem(data, state);
     }
@@ -157,7 +160,6 @@ const apiModules = reduce(
   [
     'inventories',
     'products',
-    'counts',
   ],
   (result, resourceKey) => {
     result[resourceKey] = { // eslint-disable-line no-param-reassign

@@ -1,8 +1,10 @@
+import datetime
 import os
 
-from bson import ObjectId
+from bson import ObjectId, json_util, son
 from eve import Eve
 from flask import abort, jsonify, send_file
+from flask_socketio import SocketIO
 
 from api.login import JwtTokenAuth
 from api.login import blueprint as login_blueprint
@@ -11,8 +13,6 @@ from api.settings import ACTIVE, CLOSED, DATE_FORMAT, ITEM_METHODS, RESOURCE_MET
 
 
 def on_insert_inventories_event(items):
-    import datetime
-
     date = datetime.datetime.now().strftime(DATE_FORMAT)
     for item in items:
         item["date"] = date
@@ -22,13 +22,17 @@ def on_insert_inventories_event(items):
 def on_inserted_inventories_event(items):
     db = app.data.driver.db
     col_products = db["products"]
-
-    products = odoo_products()
-    for item in items:
-        inventory_id = item["_id"]
-        for p in products:
-            p["inventory"] = inventory_id
-        col_products.insert_many(products)
+    try:
+        products = odoo_products()
+        for item in items:
+            inventory_id = item["_id"]
+            for p in products:
+                p["inventory"] = inventory_id
+            col_products.insert_many(products)
+    except Exception:
+        for item in items:
+            db["inventories"].delete_one(filter=son.SON({"_id": item["_id"]}))
+        raise
 
 
 def on_insert_counts_event(items):
@@ -41,6 +45,18 @@ def on_insert_counts_event(items):
             abort(403)
 
 
+def on_inserted_counts_event(items):
+    for item in items:
+        for k, v in item.items():
+            if isinstance(v, ObjectId):
+                item[k] = str(v)
+        socket_io.emit(
+            "new_count",
+            item,
+        )
+
+
+ALLOW_ALL_ORIGINS = os.environ.get("ALLOW_ALL_ORIGINS", "False").lower() in ["true", "1"]
 NO_AUTH = os.environ.get("NO_AUTH", "False").lower() in ["true", "1"]
 SETTINGS = os.path.abspath("./api/settings.py")
 if NO_AUTH:
@@ -48,15 +64,21 @@ if NO_AUTH:
 else:
     app = Eve(__name__, auth=JwtTokenAuth, settings=SETTINGS, static_folder="./client/dist/")
     app.register_blueprint(login_blueprint)
+socket_io = SocketIO(
+    app,
+    json=json_util,
+    cors_allowed_origins="*" if ALLOW_ALL_ORIGINS else [],
+)
 
 app.on_insert_counts += on_insert_counts_event
+app.on_inserted_counts += on_inserted_counts_event
 app.on_insert_inventories += on_insert_inventories_event
 app.on_inserted_inventories += on_inserted_inventories_event
 
 
 @app.after_request
 def allow_all_origins(response):
-    if os.environ.get("ALLOW_ALL_ORIGINS", "False").lower() in ["true", "1"]:
+    if ALLOW_ALL_ORIGINS:
         response.headers["Access-Control-Allow-Origin"] = "*"
         response.headers["Access-Control-Allow-Headers"] = ", ".join(X_HEADERS)
         response.headers["Access-Control-Allow-Methods"] = ", ".join(

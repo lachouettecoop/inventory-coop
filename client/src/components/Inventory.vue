@@ -39,6 +39,12 @@
                               v-model="productFilter">
                 </v-text-field>
                 <v-spacer/>
+                <v-btn small
+                       v-if="inventory.state===1 && !isLoading"
+                       @click="init()">
+                  Recharger les comptes
+                </v-btn>
+                <v-spacer/>
                 <template v-if="inventory.state<2">
                   <span>Equipe(s):</span>
                   <v-radio-group
@@ -84,6 +90,7 @@
             :headers="headers"
             :items-per-page="15"
             :sort-by="sortBy"
+            :footer-props="{'items-per-page-options': [20, 50, 100, -1]}"
           >
             <template v-slot:body="{ items }">
               <tbody>
@@ -138,6 +145,7 @@ import {
   clone, deburr, includes, isEmpty, find, findIndex, forEach, get, sortBy, filter,
 } from 'lodash';
 import moment from 'moment';
+import { removeCookieToken } from '../mixin/cookie';
 
 const ODOO_ID_COLUMN = 'line_ids/product_id/.id';
 const NAME_COLUMN = 'name';
@@ -160,7 +168,6 @@ export default {
         message: '',
         type: 'error',
       },
-      lastUpdatedCount: '',
       productsAndCounts: [],
       someErrorInCounts: false,
       zones: [],
@@ -175,22 +182,18 @@ export default {
     this.$store.dispatch({
       type: 'inventories/fetchResource',
       id: this.inventoryId,
+    }).catch((error) => {
+      if (error.response?.status === 401) {
+        removeCookieToken();
+        this.$router.push({ name: 'Login' });
+      }
     });
     this.$store.dispatch({
       type: 'products/getResourcesWhere',
       where: { inventory: `${this.inventoryId}` },
     }).then(() => {
-      this.initProductAndCounts();
-      this.updateProductsAndCounts();
-      this.applyFilter();
-      this.loadCounts();
+      this.init();
     });
-    this.interval = setInterval(() => {
-      this.loadCounts();
-    }, 5000); // refresh each 5s
-  },
-  beforeDestroy() {
-    clearInterval(this.interval);
   },
   watch: {
     products() {
@@ -295,9 +298,6 @@ export default {
   methods: {
     loadCounts() {
       const where = { inventory: `${this.inventoryId}` };
-      if (!isEmpty(this.lastUpdatedCount)) {
-        where.updated = { $gte: `${this.lastUpdatedCount}` };
-      }
       this.$store.dispatch({
         type: 'counts/getResourcesWhere',
         where,
@@ -423,13 +423,19 @@ export default {
         });
       }
     },
+    init() {
+      this.initProductAndCounts();
+      this.updateProductsAndCounts();
+      this.applyFilter();
+      this.loadCounts();
+    },
     initProductAndCounts() {
       this.zones = [];
       this.productsAndCounts = [];
-      this.lastUpdatedCount = '';
       this.products.forEach((product) => {
         const productAndCounts = clone(product);
         productAndCounts.zones = [];
+        productAndCounts.counts = [];
         productAndCounts.errOdoo = 0;
         productAndCounts.totalQty = 0;
         productAndCounts.modified = false;
@@ -477,37 +483,34 @@ export default {
     },
     updateProductsAndCounts() {
       const updatedProductsAndCounts = [];
-      let { lastUpdatedCount } = this;
       this.counts.forEach((count) => {
-        if (count.updated > this.lastUpdatedCount) {
-          const productIndex = findIndex(this.productsAndCounts, { id: count.product });
-          // productsAndCounts update
-          if (productIndex >= 0) {
-            const productAndCounts = this.productsAndCounts[productIndex];
+        const productIndex = findIndex(this.productsAndCounts, { id: count.product });
+        // productsAndCounts update
+        if (productIndex >= 0) {
+          const productAndCounts = this.productsAndCounts[productIndex];
+          const countIndex = findIndex(productAndCounts.counts, { id: count.id });
+          if (countIndex < 0) {
+            productAndCounts.counts.push(count);
+
             let zoneIndex = findIndex(productAndCounts.zones, { name: count.zone });
             if (zoneIndex < 0) {
               zoneIndex = productAndCounts.zones.push({ name: count.zone, counts: [] }) - 1;
             }
             const zone = this.productsAndCounts[productIndex].zones[zoneIndex];
-            let countIndex = findIndex(zone.counts, { counter: count.counter });
-            if (countIndex < 0) {
-              countIndex = zone.counts.push({ counter: count.counter, qty: count.qty }) - 1;
+            let counterIndex = findIndex(zone.counts, { counter: count.counter });
+            if (counterIndex < 0) {
+              counterIndex = zone.counts.push({ counter: count.counter, qty: count.qty }) - 1;
             } else {
-              zone.counts[countIndex].qty += count.qty;
+              zone.counts[counterIndex].qty += count.qty;
             }
-            productAndCounts[`${count.zone}${SEPARATOR}${count.counter}`] = zone.counts[countIndex].qty;
-            if (count.updated > lastUpdatedCount) {
-              // eslint-disable-next-line vue/no-side-effects-in-computed-properties
-              lastUpdatedCount = count.updated;
-            }
+            productAndCounts[`${count.zone}${SEPARATOR}${count.counter}`] = zone.counts[counterIndex].qty;
             updatedProductsAndCounts.push(productAndCounts);
-          } else {
-            // TODO ERROR
           }
-          this.updateZones(count);
+        } else {
+          // TODO ERROR
         }
+        this.updateZones(count);
       });
-      this.lastUpdatedCount = lastUpdatedCount;
 
       updatedProductsAndCounts.forEach((productAndCounts) => {
         this.updateErrors(productAndCounts);

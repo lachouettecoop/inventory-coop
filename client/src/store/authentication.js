@@ -3,9 +3,13 @@ import jwt_decode from 'jwt-decode'; // eslint-disable-line camelcase
 
 import authHeader from '../mixin/authHeader';
 import { recordTokenInCookie, removeCookieToken } from '../mixin/cookie';
-import serverUrl from '../mixin/url';
+import { apiUrl } from '../mixin/url';
 
-const initialState = { status: {}, token: null, user: (process.env.NODE_ENV === 'production') ? null : { role: 'admin' } };
+const initialState = {
+  status: {},
+  token: null,
+  user: (process.env.NODE_ENV === 'production') ? null : { role: 'admin' },
+};
 
 const getters = {
   status: (state) => state.status,
@@ -23,7 +27,7 @@ const authentication = {
       return new Promise((resolve, reject) => {
         axios({
           method: 'post',
-          url: `${serverUrl()}/login`,
+          url: `${apiUrl()}/login`,
           data: { email, password },
         }).then(({ data }) => {
           commit('loginSuccess', data);
@@ -38,7 +42,7 @@ const authentication = {
       return new Promise((resolve, reject) => {
         axios({
           method: 'post',
-          url: `${serverUrl()}/login/refresh`,
+          url: `${apiUrl()}/login/refresh`,
           headers: authHeader(),
         }).then(({ data }) => {
           commit('loginSuccess', data);
