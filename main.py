@@ -1,3 +1,4 @@
+import datetime
 import os
 
 from bson import ObjectId, json_util, son
@@ -12,8 +13,6 @@ from api.settings import ACTIVE, CLOSED, DATE_FORMAT, ITEM_METHODS, RESOURCE_MET
 
 
 def on_insert_inventories_event(items):
-    import datetime
-
     date = datetime.datetime.now().strftime(DATE_FORMAT)
     for item in items:
         item["date"] = date
@@ -48,6 +47,9 @@ def on_insert_counts_event(items):
 
 def on_inserted_counts_event(items):
     for item in items:
+        for k, v in item.items():
+            if isinstance(v, ObjectId):
+                item[k] = str(v)
         socket_io.emit(
             "new_count",
             item,

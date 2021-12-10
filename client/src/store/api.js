@@ -1,6 +1,6 @@
 import axios from 'axios';
 import {
-  forEach, isArray, isEmpty, reduce,
+  forEach, isArray, reduce,
 } from 'lodash';
 
 import { apiUrl } from '@/mixin/url';
@@ -11,7 +11,7 @@ const getters = {
   isLoading: (state) => state.loading,
 };
 
-const onError = (key, commit, error, reject) => {
+const onError = (commit, error, reject) => {
   commit('setDataError', error);
   commit('setDataLoading', false);
   reject(error);
@@ -30,7 +30,7 @@ const getActions = (key) => ({
         commit('setDataLoading', false);
         resolve(data);
       }).catch((error) => {
-        onError(key, commit, error, reject);
+        onError(commit, error, reject);
       });
     });
   },
@@ -45,7 +45,7 @@ const getActions = (key) => ({
         commit('setDataLoading', false);
         resolve(data);
       }).catch((error) => {
-        onError(key, commit, error, reject);
+        onError(commit, error, reject);
       });
     });
   },
@@ -59,7 +59,7 @@ const getActions = (key) => ({
         commit('setResources', data);
         commit('setDataLoading', false);
       }).catch((error) => {
-        onError(key, commit, error, reject);
+        onError(commit, error, reject);
       });
     });
   },
@@ -75,7 +75,7 @@ const getActions = (key) => ({
         commit('setDataLoading', false);
         resolve(data);
       }).catch((error) => {
-        onError(key, commit, error, reject);
+        onError(commit, error, reject);
       });
     });
   },
@@ -93,7 +93,7 @@ const getActions = (key) => ({
         commit('setDataLoading', false);
         resolve(data);
       }).catch((error) => {
-        onError(key, commit, error, reject);
+        onError(commit, error, reject);
       });
     });
   },
@@ -110,16 +110,16 @@ const getActions = (key) => ({
         commit('removeData', resource.id);
         resolve();
       }).catch((error) => {
-        onError(key, commit, error, reject);
+        onError(commit, error, reject);
       });
     });
   },
 });
 
-const setItem = (item, state, forcePush = false) => {
+const setItem = (item, state) => {
   // eslint-disable-next-line no-param-reassign,no-underscore-dangle
   item.id = item._id;
-  const existingItem = forcePush ? undefined : state.dataMap.get(item.id);
+  const existingItem = state.dataMap.get(item.id);
   if (existingItem) {
     forEach(Object.keys(item), (propertyName) => {
       existingItem[propertyName] = item[propertyName];
@@ -136,10 +136,13 @@ const mutations = {
   },
   setResources(state, data) {
     if (isArray(data.items)) {
-      const forcePush = isEmpty(state.dataMap);
+      state.dataMap.clear();
       forEach(data.items, (item) => {
-        setItem(item, state, forcePush);
+        // eslint-disable-next-line no-param-reassign,no-underscore-dangle
+        item.id = item._id;
+        state.dataMap.set(item.id, item);
       });
+      state.data = Array.from(state.dataMap.values());
     } else {
       setItem(data, state);
     }

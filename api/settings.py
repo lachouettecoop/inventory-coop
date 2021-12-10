@@ -10,7 +10,8 @@ HATEOAS = False
 PAGINATION = False
 URL_PREFIX = "api"
 API_VERSION = "v1"
-X_HEADERS = ["Authorization", "Content-type", "If-Match"]
+X_HEADERS = ["Authorization", "Cache-Control", "Content-Type", "If-Match"]
+CACHE_CONTROL = "no-cache, no-store, must-revalidate"
 
 # Enable reads (GET), inserts (POST) and DELETE for resources/collections
 # (if you omit this line, the API will default to ['GET'] and provide

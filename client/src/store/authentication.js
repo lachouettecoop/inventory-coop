@@ -5,7 +5,11 @@ import authHeader from '../mixin/authHeader';
 import { recordTokenInCookie, removeCookieToken } from '../mixin/cookie';
 import { apiUrl } from '../mixin/url';
 
-const initialState = { status: {}, token: null, user: (process.env.NODE_ENV === 'production') ? null : { role: 'admin' } };
+const initialState = {
+  status: {},
+  token: null,
+  user: (process.env.NODE_ENV === 'production') ? null : { role: 'admin' },
+};
 
 const getters = {
   status: (state) => state.status,

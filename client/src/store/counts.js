@@ -1,15 +1,14 @@
 import Vue from 'vue';
 import axios from 'axios';
-import { forEach, isArray, isEmpty } from 'lodash';
+import { forEach, isArray } from 'lodash';
 
 import { apiUrl } from '@/mixin/url';
 import authHeader from '@/mixin/authHeader';
 
-const addCount = (count, state, forcePush = false) => {
-  console.log({ count, forcePush });
+const addCount = (count, state) => {
   // eslint-disable-next-line no-param-reassign,no-underscore-dangle
   count.id = count._id;
-  const existingItem = forcePush ? undefined : state.dataMap.get(count.id);
+  const existingItem = state.dataMap.get(count.id);
   if (existingItem) {
     forEach(Object.keys(count), (propertyName) => {
       existingItem[propertyName] = count[propertyName];
@@ -87,7 +86,6 @@ const counts = {
       context.commit('setConnected', false);
     },
     WS_new_count(context, data) {
-      console.log({ data });
       context.commit('resetError');
       context.commit('setResources', data);
     },
@@ -102,10 +100,13 @@ const counts = {
     },
     setResources(state, data) {
       if (isArray(data.items)) {
-        const forcePush = isEmpty(state.dataMap);
-        forEach(data.items, (item) => {
-          addCount(item, state, forcePush);
+        state.dataMap.clear();
+        forEach(data.items, (count) => {
+          // eslint-disable-next-line no-param-reassign,no-underscore-dangle
+          count.id = count._id;
+          state.dataMap.set(count.id, count);
         });
+        state.data = Array.from(state.dataMap.values());
       } else {
         addCount(data, state);
       }
