@@ -57,6 +57,7 @@ def on_inserted_counts_event(items):
 
 
 ALLOW_ALL_ORIGINS = os.environ.get("ALLOW_ALL_ORIGINS", "False").lower() in ["true", "1"]
+DEBUG = os.environ.get("DEBUG", "False").lower() in ["true", "1"]
 NO_AUTH = os.environ.get("NO_AUTH", "False").lower() in ["true", "1"]
 SETTINGS = os.path.abspath("./api/settings.py")
 if NO_AUTH:
@@ -67,6 +68,7 @@ else:
 socket_io = SocketIO(
     app,
     json=json_util,
+    logger=True,
     cors_allowed_origins="*" if ALLOW_ALL_ORIGINS else [],
 )
 
@@ -113,4 +115,4 @@ def route_frontend(path):
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=8000)
+    app.run(debug=DEBUG, host="0.0.0.0", port=8000)
