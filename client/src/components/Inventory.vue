@@ -3,7 +3,7 @@
     <v-flex>
       <v-card>
         <v-card-text>
-          <v-container fluid>
+          <v-container class="pa-6">
             <v-layout raw>
               <v-layout align-center justify-start row fill-height>
                 <span class="headline">Inventaire du {{ inventory.date }}</span>
@@ -40,6 +40,7 @@
                 </v-text-field>
                 <v-spacer/>
                 <v-btn small
+                       style="align-self: center"
                        v-if="inventory.state===1 && !isLoading"
                        @click="init()">
                   Recharger les comptes
