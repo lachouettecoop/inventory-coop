@@ -30,7 +30,7 @@ services:
       traefik.docker.network: "inverseproxy_shared"
       traefik.enable: "true"
       traefik.frontend.passHostHeader: "true"
-      traefik.port: "80"
+      traefik.port: "8000"
       traefik.www.frontend.rule: "Host:inventaires.lachouettecoop.fr"
 
 networks:
