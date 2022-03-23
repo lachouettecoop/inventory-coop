@@ -484,11 +484,12 @@ export default {
     },
     updateProductsAndCounts() {
       const updatedProductsAndCounts = [];
+      const _productsAndCounts = clone(this.productsAndCounts)
       this.counts.forEach((count) => {
-        const productIndex = findIndex(this.productsAndCounts, { id: count.product });
+        const productIndex = findIndex(_productsAndCounts, { id: count.product });
         // productsAndCounts update
         if (productIndex >= 0) {
-          const productAndCounts = this.productsAndCounts[productIndex];
+          const productAndCounts = _productsAndCounts[productIndex];
           const countIndex = findIndex(productAndCounts.counts, { id: count.id });
           if (countIndex < 0) {
             productAndCounts.counts.push(count);
@@ -497,7 +498,7 @@ export default {
             if (zoneIndex < 0) {
               zoneIndex = productAndCounts.zones.push({ name: count.zone, counts: [] }) - 1;
             }
-            const zone = this.productsAndCounts[productIndex].zones[zoneIndex];
+            const zone = _productsAndCounts[productIndex].zones[zoneIndex];
             let counterIndex = findIndex(zone.counts, { counter: count.counter });
             if (counterIndex < 0) {
               counterIndex = zone.counts.push({ counter: count.counter, qty: count.qty }) - 1;
@@ -512,6 +513,7 @@ export default {
         }
         this.updateZones(count);
       });
+      this.productsAndCounts = _productsAndCounts;
 
       updatedProductsAndCounts.forEach((productAndCounts) => {
         this.updateErrors(productAndCounts);

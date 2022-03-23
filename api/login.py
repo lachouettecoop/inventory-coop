@@ -1,5 +1,5 @@
+import datetime
 import os
-import time
 
 import jwt
 import ldap
@@ -8,10 +8,11 @@ from flask import Blueprint, abort, jsonify, request
 
 blueprint = Blueprint("login", __name__)
 
+NO_AUTH = os.environ.get("NO_AUTH", "False").lower() in ["true", "1"]
 ADMIN_USERS = os.environ.get("ADMIN_USERS", "papanowel@gmail.com")
 JWT_ALGORITHM = os.environ.get("JWT_ALGORITHM", "HS256")
-JWT_EXPIRE_OFFSET = os.environ.get("JWT_EXPIRE_OFFSET", 60 * 60 * 12)  # 12H
 JWT_SECRET = os.environ.get("JWT_SECRET")
+JWT_EXPIRE_OFFSET = os.environ.get("JWT_EXPIRE_OFFSET", 60 * 60 * 12)  # 12H
 LDAP_SERVER = os.environ.get("LDAP_SERVER", "ldap://ldap.lachouettecoop.fr:389")
 LDAP_BASE_DN = os.environ.get("LDAP_BASE_DN", "cn=admin,dc=lachouettecoop,dc=fr")
 LDAP_SEARCH_DN = os.environ.get("LDAP_SEARCH_DN", "dc=lachouettecoop,dc=fr")
@@ -23,7 +24,7 @@ LDAP_SCOPE_SUBTREE = 2
 
 
 class AuthorizationError(Exception):
-    """ A base class for exceptions used by bottle. """
+    """A base class for exceptions used by bottle."""
 
     pass
 
@@ -35,6 +36,15 @@ def role(user):
 
 
 def build_profile(user):
+    exp = int(datetime.datetime.now().timestamp()) + JWT_EXPIRE_OFFSET
+    if NO_AUTH:
+        return {
+            "user": user,
+            "name": user,
+            "lastname": user,
+            "role": "admin",
+            "exp": exp,
+        }
     try:
         ldap_connection = ldap.initialize(LDAP_SERVER)
         ldap_connection.simple_bind_s(LDAP_BASE_DN, LDAP_ADMIN_PASS)
@@ -46,7 +56,7 @@ def build_profile(user):
             "name": result[0][1]["sn"][0].decode("utf-8"),
             "lastname": result[0][1]["description"][0].decode("utf-8"),
             "role": role(user),
-            "exp": time.time() + JWT_EXPIRE_OFFSET,
+            "exp": exp,
         }
     except Exception as e:
         abort(403, f"Authentication failed for {user}: {str(e)}")
@@ -54,22 +64,24 @@ def build_profile(user):
 
 @blueprint.route("/api/v1/login", methods=["POST"])
 def login():
-    # extract credentials from the request
     credentials = request.json
+    # extract credentials from the request
     if not credentials or "email" not in credentials or "password" not in credentials:
         abort(400, "Missing or bad credentials")
-
     user = credentials["email"]
     password = credentials["password"]
-    # authenticate against some identity source, such as LDAP or a database
-    try:
-        ldap_connection = ldap.initialize(LDAP_SERVER)
-        ldap_connection.simple_bind_s(LDAP_USER_DN.format(user), password)
-        ldap_connection.unbind_s()
-    except Exception as e:
-        abort(403, f"Authentication failed for {user}: {str(e)}")
-    token = jwt.encode(build_profile(user), JWT_SECRET, algorithm=JWT_ALGORITHM)
 
+    if not NO_AUTH:
+        # authenticate against some identity source, such as LDAP or a database
+        try:
+            ldap_connection = ldap.initialize(LDAP_SERVER)
+            ldap_connection.simple_bind_s(LDAP_USER_DN.format(user), password)
+            ldap_connection.unbind_s()
+        except Exception as e:
+            abort(403, f"Authentication failed for {user}: {str(e)}")
+
+    profile = build_profile(user)
+    token = jwt.encode(profile, JWT_SECRET, algorithm=JWT_ALGORITHM)
     return jsonify({"token": token})
 
 

@@ -58,13 +58,10 @@ def on_inserted_counts_event(items):
 
 ALLOW_ALL_ORIGINS = os.environ.get("ALLOW_ALL_ORIGINS", "False").lower() in ["true", "1"]
 DEBUG = os.environ.get("DEBUG", "False").lower() in ["true", "1"]
-NO_AUTH = os.environ.get("NO_AUTH", "False").lower() in ["true", "1"]
 SETTINGS = os.path.abspath("./api/settings.py")
-if NO_AUTH:
-    app = Eve(__name__, settings=SETTINGS, static_folder="./client/dist/")
-else:
-    app = Eve(__name__, auth=JwtTokenAuth, settings=SETTINGS, static_folder="./client/dist/")
-    app.register_blueprint(login_blueprint)
+
+app = Eve(__name__, auth=JwtTokenAuth, settings=SETTINGS, static_folder="./client/dist/")
+app.register_blueprint(login_blueprint)
 socket_io = SocketIO(
     app,
     json=json_util,

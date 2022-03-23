@@ -85,4 +85,7 @@ export default {
   min-width: 20px;
   text-align: center;
 }
+.sidebar {
+  will-change: auto;
+}
 </style>

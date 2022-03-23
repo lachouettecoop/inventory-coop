@@ -18,6 +18,7 @@ class OdooAPI:
             self.models = xmlrpc.client.ServerProxy(object_proxy_url)
         except Exception as e:
             logging.error(f"Odoo API connection impossible: {e}")
+            raise
 
     def search_read(self, entity, cond=None, fields=None, limit=0, offset=0, order="id ASC"):
         """Main api request, retrieving data according search conditions."""
