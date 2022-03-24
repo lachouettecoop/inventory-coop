@@ -112,17 +112,21 @@
                                     dense
                                     hide-details="auto"
                                     background-color="blue-grey lighten-5"
-                                    :disabled="inventory.state>=2"
+                                    :disabled="inventory.state>=2 || saveInProgress"
                                     @input="changeCounts(item)"
                                     v-model="item[counterAtZone]">
                       </v-text-field>
                     </td>
                     <td>
                       <v-btn color="success"
-                             :disabled="!item.modified"
+                             :disabled="saveInProgress || !item.modified"
                              @click="saveCount(item)">
-                        Save
+                        <v-progress-circular v-if="saveInProgress && item.modified"
+                                             indeterminate
+                                             color="primary"/>
+                        <span v-else>Save</span>
                       </v-btn>
+
                     </td>
                   </template>
                   <template v-else>
@@ -172,14 +176,15 @@ export default {
       productsAndCounts: [],
       someErrorInCounts: false,
       zones: [],
-      interval: null,
       filtredProductsAndCounts: [],
       productFilter: '',
       radioGroup: 'Toutes',
       sortBy: [],
+      saveInProgress: false,
     };
   },
   beforeMount() {
+    this.initProductAndCounts();
     this.$store.dispatch({
       type: 'inventories/fetchResource',
       id: this.inventoryId,
@@ -189,12 +194,8 @@ export default {
         this.$router.push({ name: 'Login' });
       }
     });
-    this.$store.dispatch({
-      type: 'products/getResourcesWhere',
-      where: { inventory: `${this.inventoryId}` },
-    }).then(() => {
-      this.init();
-    });
+    this.loadProducts();
+    this.loadCounts();
   },
   watch: {
     products() {
@@ -232,7 +233,7 @@ export default {
       return filter(counts, { inventory: this.inventoryId });
     },
     isLoading() {
-      return this.$store.getters['products/isLoading'];
+      return this.$store.getters['products/isLoading'] || this.$store.getters['counts/isLoading'];
     },
     user() {
       return this.$store.getters['authentication/user'];
@@ -297,15 +298,22 @@ export default {
     },
   },
   methods: {
-    loadCounts() {
-      const where = { inventory: `${this.inventoryId}` };
+    loadProducts() {
       this.$store.dispatch({
-        type: 'counts/getResourcesWhere',
-        where,
+        type: 'products/getResourcesWhere',
+        where: { inventory: `${this.inventoryId}` },
       }).catch((reason) => {
         this.alert.message = reason;
         this.alert.show = true;
-        clearInterval(this.interval);
+      });
+    },
+    loadCounts() {
+      this.$store.dispatch({
+        type: 'counts/getResourcesWhere',
+        where: { inventory: `${this.inventoryId}` },
+      }).catch((reason) => {
+        this.alert.message = reason;
+        this.alert.show = true;
       });
     },
     changeState(state) {
@@ -387,6 +395,8 @@ export default {
       return this.asEuro(cost);
     },
     saveCount(productAndCounts) {
+      console.log('saveCount');
+      this.saveInProgress = true;
       const counts = [];
       this.zones.forEach((zone) => {
         zone.counters.forEach((counter) => {
@@ -421,7 +431,14 @@ export default {
           })),
         }).then(() => {
           this.changeCounts(productAndCounts);
+          this.saveInProgress = false;
+        }).catch((reason) => {
+          this.alert.message = reason;
+          this.alert.show = true;
+          this.saveInProgress = false;
         });
+      } else {
+        this.saveInProgress = false;
       }
     },
     init() {
@@ -484,12 +501,11 @@ export default {
     },
     updateProductsAndCounts() {
       const updatedProductsAndCounts = [];
-      const _productsAndCounts = clone(this.productsAndCounts)
       this.counts.forEach((count) => {
-        const productIndex = findIndex(_productsAndCounts, { id: count.product });
+        const productIndex = findIndex(this.productsAndCounts, { id: count.product });
         // productsAndCounts update
         if (productIndex >= 0) {
-          const productAndCounts = _productsAndCounts[productIndex];
+          const productAndCounts = this.productsAndCounts[productIndex];
           const countIndex = findIndex(productAndCounts.counts, { id: count.id });
           if (countIndex < 0) {
             productAndCounts.counts.push(count);
@@ -498,7 +514,7 @@ export default {
             if (zoneIndex < 0) {
               zoneIndex = productAndCounts.zones.push({ name: count.zone, counts: [] }) - 1;
             }
-            const zone = _productsAndCounts[productIndex].zones[zoneIndex];
+            const zone = this.productsAndCounts[productIndex].zones[zoneIndex];
             let counterIndex = findIndex(zone.counts, { counter: count.counter });
             if (counterIndex < 0) {
               counterIndex = zone.counts.push({ counter: count.counter, qty: count.qty }) - 1;
@@ -508,12 +524,9 @@ export default {
             productAndCounts[`${count.zone}${SEPARATOR}${count.counter}`] = zone.counts[counterIndex].qty;
             updatedProductsAndCounts.push(productAndCounts);
           }
-        } else {
-          // TODO ERROR
         }
         this.updateZones(count);
       });
-      this.productsAndCounts = _productsAndCounts;
 
       updatedProductsAndCounts.forEach((productAndCounts) => {
         this.updateErrors(productAndCounts);
@@ -562,10 +575,10 @@ export default {
       return includes(value, `${SEPARATOR}${ERROR}`);
     },
     applyFilter() {
-      this.filtredProductsAndCounts = [];
       if (isEmpty(this.productFilter)) {
         this.filtredProductsAndCounts = this.productsAndCounts;
       } else {
+        this.filtredProductsAndCounts = [];
         const filters = this.productFilter
           .split(/(\s+)/)
           .filter((e) => e.trim().length > 0)

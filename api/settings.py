@@ -23,7 +23,7 @@ RESOURCE_METHODS = ["GET", "POST", "DELETE"]
 ITEM_METHODS = ["GET", "PATCH", "PUT", "DELETE"]
 
 BANDWIDTH_SAVER = False
-SOFT_DELETE = True
+SOFT_DELETE = False
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 DATE_CREATED = "created"
 ETAG = "etag"

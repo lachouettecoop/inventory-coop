@@ -2,6 +2,9 @@ import logging
 import os
 import xmlrpc.client
 
+NO_ODOO = os.environ.get("NO_ODOO", "False").lower() in ["true", "1"]
+FAKE_PRODUCT_NB = 100
+
 ODOO_URL = os.getenv("ODOO_URL", "https://sas.lachouettecoop.fr")
 ODOO_DB = os.getenv("ODOO_DB", "dbsas")
 ODOO_LOGIN = os.getenv("ODOO_LOGIN")
@@ -11,6 +14,8 @@ ODOO_PASSWORD = os.getenv("ODOO_PASSWORD")
 class OdooAPI:
     def __init__(self):
         try:
+            if NO_ODOO:
+                return
             common_proxy_url = "{}/xmlrpc/2/common".format(ODOO_URL)
             object_proxy_url = "{}/xmlrpc/2/object".format(ODOO_URL)
             self.common = xmlrpc.client.ServerProxy(common_proxy_url)
@@ -59,17 +64,31 @@ def _consolidate(products):
 
 
 def odoo_products():
-    products = OdooAPI().search_read(
-        "product.product",
-        cond=[
-            ["standard_price", ">", 0],
-        ],
-        fields=[
-            "barcode",
-            "id",
-            "name",
-            "qty_available",
-            "standard_price",
-        ],
+    if NO_ODOO:
+        return _consolidate(
+            [
+                {
+                    "barcode": f"00000{i:05d}",
+                    "id": i,
+                    "name": f"p{i:05d}",
+                    "qty_available": 10,
+                    "standard_price": 1.1,
+                }
+                for i in range(FAKE_PRODUCT_NB)
+            ]
+        )
+    return _consolidate(
+        OdooAPI().search_read(
+            "product.product",
+            cond=[
+                ["standard_price", ">", 0],
+            ],
+            fields=[
+                "barcode",
+                "id",
+                "name",
+                "qty_available",
+                "standard_price",
+            ],
+        )
     )
-    return _consolidate(products)

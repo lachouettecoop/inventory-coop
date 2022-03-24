@@ -36,14 +36,12 @@ def role(user):
 
 
 def build_profile(user):
-    exp = int(datetime.datetime.now().timestamp()) + JWT_EXPIRE_OFFSET
     if NO_AUTH:
         return {
             "user": user,
             "name": user,
             "lastname": user,
             "role": "admin",
-            "exp": exp,
         }
     try:
         ldap_connection = ldap.initialize(LDAP_SERVER)
@@ -56,7 +54,7 @@ def build_profile(user):
             "name": result[0][1]["sn"][0].decode("utf-8"),
             "lastname": result[0][1]["description"][0].decode("utf-8"),
             "role": role(user),
-            "exp": exp,
+            "exp": int(datetime.datetime.now().timestamp()) + JWT_EXPIRE_OFFSET,
         }
     except Exception as e:
         abort(403, f"Authentication failed for {user}: {str(e)}")

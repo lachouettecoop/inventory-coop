@@ -5,20 +5,6 @@ import { forEach, isArray } from 'lodash';
 import { apiUrl } from '@/mixin/url';
 import authHeader from '@/mixin/authHeader';
 
-const addCount = (count, state) => {
-  // eslint-disable-next-line no-param-reassign,no-underscore-dangle
-  count.id = count._id;
-  const existingItem = state.dataMap.get(count.id);
-  if (existingItem) {
-    forEach(Object.keys(count), (propertyName) => {
-      existingItem[propertyName] = count[propertyName];
-    });
-  } else {
-    state.dataMap.set(count.id, count);
-    state.data.push(count);
-  }
-};
-
 const onError = (commit, error, reject) => {
   commit('setError', error);
   commit('setDataLoading', false);
@@ -31,7 +17,7 @@ const counts = {
     data: [],
     dataMap: new Map(),
     connected: false,
-    isLoading: false,
+    loading: false,
     error: null,
     starting_sid: null,
     current_sid: null,
@@ -59,7 +45,6 @@ const counts = {
       });
     },
     createResource({ commit }, { resource }) {
-      commit('setDataLoading', true);
       return new Promise((resolve, reject) => {
         axios.post(
           `${apiUrl()}/counts`,
@@ -67,7 +52,6 @@ const counts = {
           { headers: authHeader() },
         ).then(({ data }) => {
           commit('setResources', data);
-          commit('setDataLoading', false);
           resolve(data);
         }).catch((error) => {
           onError(commit, error, reject);
@@ -85,7 +69,7 @@ const counts = {
     WS_disconnect(context) {
       context.commit('setConnected', false);
     },
-    WS_new_count(context, data) {
+    WS_new_counts(context, data) {
       context.commit('resetError');
       context.commit('setResources', data);
     },
@@ -99,17 +83,25 @@ const counts = {
       state.loading = value;
     },
     setResources(state, data) {
-      if (isArray(data.items)) {
-        state.dataMap.clear();
-        forEach(data.items, (count) => {
-          // eslint-disable-next-line no-param-reassign,no-underscore-dangle
-          count.id = count._id;
+      let datas = null;
+      if (isArray(data)) datas = data;
+      else if (isArray(data.items)) datas = data.items;
+      else datas = [data];
+      const newCounts = [];
+      forEach(datas, (count) => {
+        // eslint-disable-next-line no-param-reassign,no-underscore-dangle
+        count.id = count._id;
+        const existingItem = state.dataMap.get(count.id);
+        if (existingItem) {
+          forEach(Object.keys(count), (propertyName) => {
+            existingItem[propertyName] = count[propertyName];
+          });
+        } else {
           state.dataMap.set(count.id, count);
-        });
-        state.data = Array.from(state.dataMap.values());
-      } else {
-        addCount(data, state);
-      }
+          newCounts.push(count);
+        }
+      });
+      state.data.push(...newCounts);
     },
     setConnected(state, payload) {
       state.connected = payload;

@@ -11,6 +11,19 @@ from api.login import blueprint as login_blueprint
 from api.odoo import odoo_products
 from api.settings import ACTIVE, CLOSED, DATE_FORMAT, ITEM_METHODS, RESOURCE_METHODS, X_HEADERS
 
+ALLOW_ALL_ORIGINS = os.environ.get("ALLOW_ALL_ORIGINS", "False").lower() in ["true", "1"]
+DEBUG = os.environ.get("DEBUG", "False").lower() in ["true", "1"]
+SETTINGS = os.path.abspath("./api/settings.py")
+
+app = Eve(__name__, auth=JwtTokenAuth, settings=SETTINGS, static_folder="./client/dist/")
+app.register_blueprint(login_blueprint)
+socket_io = SocketIO(
+    app,
+    json=json_util,
+    logger=True,
+    cors_allowed_origins="*" if ALLOW_ALL_ORIGINS else [],
+)
+
 
 def on_insert_inventories_event(items):
     date = datetime.datetime.now().strftime(DATE_FORMAT)
@@ -50,29 +63,23 @@ def on_inserted_counts_event(items):
         for k, v in item.items():
             if isinstance(v, ObjectId):
                 item[k] = str(v)
-        socket_io.emit(
-            "new_count",
-            item,
-        )
+    socket_io.emit(
+        "new_counts",
+        items,
+    )
 
 
-ALLOW_ALL_ORIGINS = os.environ.get("ALLOW_ALL_ORIGINS", "False").lower() in ["true", "1"]
-DEBUG = os.environ.get("DEBUG", "False").lower() in ["true", "1"]
-SETTINGS = os.path.abspath("./api/settings.py")
+def on_deleted_item_inventories_event(item):
+    db = app.data.driver.db
+    db["products"].delete_many({"inventory": item["_id"]})
+    db["counts"].delete_many({"inventory": item["_id"]})
 
-app = Eve(__name__, auth=JwtTokenAuth, settings=SETTINGS, static_folder="./client/dist/")
-app.register_blueprint(login_blueprint)
-socket_io = SocketIO(
-    app,
-    json=json_util,
-    logger=True,
-    cors_allowed_origins="*" if ALLOW_ALL_ORIGINS else [],
-)
 
 app.on_insert_counts += on_insert_counts_event
 app.on_inserted_counts += on_inserted_counts_event
 app.on_insert_inventories += on_insert_inventories_event
 app.on_inserted_inventories += on_inserted_inventories_event
+app.on_deleted_item_inventories += on_deleted_item_inventories_event
 
 
 @app.after_request
