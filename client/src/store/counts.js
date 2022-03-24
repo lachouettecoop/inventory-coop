@@ -31,6 +31,7 @@ const counts = {
   actions: {
     getResourcesWhere({ commit }, { where }) {
       commit('setDataLoading', true);
+      commit('clearResources');
       return new Promise((resolve, reject) => {
         axios.get(`${apiUrl()}/counts`, {
           headers: authHeader(),
@@ -82,16 +83,21 @@ const counts = {
     setDataLoading(state, value) {
       state.loading = value;
     },
+    clearResources(state) {
+      state.data.clear();
+      state.dataMap.clear();
+    },
     setResources(state, data) {
       let datas = null;
       if (isArray(data)) datas = data;
       else if (isArray(data.items)) datas = data.items;
       else datas = [data];
       const newCounts = [];
+      const update = state.data.length > 0;
       forEach(datas, (count) => {
         // eslint-disable-next-line no-param-reassign,no-underscore-dangle
         count.id = count._id;
-        const existingItem = state.dataMap.get(count.id);
+        const existingItem = update ? state.dataMap.get(count.id) : false;
         if (existingItem) {
           forEach(Object.keys(count), (propertyName) => {
             existingItem[propertyName] = count[propertyName];
