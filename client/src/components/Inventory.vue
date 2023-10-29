@@ -75,11 +75,16 @@
     </v-alert>
     <v-flex>
       <v-card>
-        <v-btn fab small right absolute
-               v-if="user.role==='admin' && inventory.state===2"
-               @click="saveFile()">
-          <v-icon>fas fa-file-export</v-icon>
-        </v-btn>
+        <v-container class="pa-8" v-if="user.role==='admin' && inventory.state===2">
+          <v-layout row>
+            <input type="checkbox" id="checkbox" v-model="partialInventory">
+            <label for="checkbox" class="pa-lg-2">Inventaire partiel</label>
+            <v-spacer/>
+            <v-btn fab small @click="saveFile()">
+              <v-icon>fas fa-file-export</v-icon>
+            </v-btn>
+          </v-layout>
+        </v-container>
         <v-card-title class="title">
           <span>Liste des produits</span>
         </v-card-title>
@@ -177,6 +182,7 @@ export default {
       productFilter: '',
       radioGroup: 'Toutes',
       sortBy: [],
+      partialInventory: false,
     };
   },
   beforeMount() {
@@ -609,16 +615,19 @@ export default {
       const filename = `to_odoo_${m.format('YY-MM-DD')}.csv`;
       const data = [];
       this.productsAndCounts.forEach((productAndCounts) => {
-        if (productAndCounts.totalQty !== productAndCounts.qty_in_odoo) {
-          // Only push product with disparity
-          data.push([
-            '',
-            '',
-            productAndCounts.odoo_id,
-            productAndCounts.totalQty,
-            PRODUCT_UOM_VALUE,
-            LINE_LOCATION_VALUE,
-          ]);
+        if (!this.partialInventory || productAndCounts.counts.length > 0) {
+          if (productAndCounts.totalQty !== productAndCounts.qty_in_odoo) {
+            console.log(productAndCounts);
+            // Only push product with disparity
+            data.push([
+              '',
+              '',
+              productAndCounts.odoo_id,
+              productAndCounts.totalQty,
+              PRODUCT_UOM_VALUE,
+              LINE_LOCATION_VALUE,
+            ]);
+          }
         }
       });
       data[0][0] = LOCATION_VALUE;

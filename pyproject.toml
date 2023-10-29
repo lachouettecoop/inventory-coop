@@ -10,15 +10,15 @@ packages = [
 license = "MIT"
 
 [tool.poetry.dependencies]
-python = "^3.8"
-eve = "^1.1.4"
-pyjwt = "^2.0.0"
-pymongo = "^3.12.1"
-python-ldap = "^3.3.1"
-Werkzeug = "^0.16.1"
-aio-odoorpc-base = "^3.0.4"
-httpx = "^0.16.1"
-flask-socketio = "v4.3.2"
+python = "^3.9"
+eve = "*"
+pymongo = "*"
+pyjwt = "*"
+python-ldap = "*"
+Flask = "*"
+flask-socketio = "*"
+itsdangerous = "*"
+requests = "*"
 
 [tool.poetry.dev-dependencies]
 black = "^20.8b1"

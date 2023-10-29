@@ -1,10 +1,10 @@
 FROM node:14-slim AS frontend
 COPY ./client /app/client
-RUN cd /app/client; \
-    npm install; \
+RUN cd /app/client &&\
+    npm install --no-optional &&\
     npm run build
 
-FROM python:3.8-slim
+FROM python:3.9-slim
 WORKDIR /app
 COPY --from=frontend /app/client/dist /app/client/dist
 COPY ./pyproject.toml ./poetry.lock ./main.py /app/
