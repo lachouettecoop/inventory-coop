@@ -109,7 +109,7 @@ def requires_auth(f):
     def decorated(*args, **kwargs):
         try:
             token = jwt_token_from_header()
-            jwt.decode(token, JWT_SECRET)  # throw away value
+            jwt.decode(token, JWT_SECRET, algorithms="HS256")  # throw away value
         except AuthorizationError as e:
             abort(400, e)
         except jwt.PyJWTError as e:
@@ -126,7 +126,7 @@ def refresh_token():
     """refresh the current JWT"""
     # get and decode the current token
     token = jwt_token_from_header()
-    payload = jwt.decode(token, JWT_SECRET)
+    payload = jwt.decode(token, JWT_SECRET, algorithms="HS256")
     # create a new token with a new exp time
     token = jwt.encode(build_profile(payload["user"]), JWT_SECRET, algorithm=JWT_ALGORITHM)
 
