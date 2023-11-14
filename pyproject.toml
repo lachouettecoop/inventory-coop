@@ -11,14 +11,15 @@ license = "MIT"
 
 [tool.poetry.dependencies]
 python = "^3.9"
-eve = "*"
-pymongo = "*"
-pyjwt = "*"
-python-ldap = "*"
-Flask = "*"
-flask-socketio = "*"
-itsdangerous = "*"
-requests = "*"
+eve = "^2.1.0"
+pymongo = "^4.6.0"
+pyjwt = "^2.8.0"
+python-ldap = "^3.4.3"
+Flask = "^1.1.4"
+itsdangerous = "^1.1.0"
+requests = "^2.31.0"
+flask-socketio = "^4.3.2"
+markupsafe = "^1.1.1"
 
 [tool.poetry.dev-dependencies]
 black = "^20.8b1"
