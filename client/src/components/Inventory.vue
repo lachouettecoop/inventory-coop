@@ -132,8 +132,8 @@
                   </template>
                   <template v-else>
                     <td>{{ item.totalQty }}</td>
-                    <td>{{ asEuro(item.totalQty * item.cost) }}</td>
-                    <td>{{ asEuro(item.errOdoo * item.cost) }}</td>
+                    <td>{{ asEuro(item.totalCost) }}</td>
+                    <td>{{ asEuro(item.errorCost) }}</td>
                   </template>
                 </tr>
               </tbody>
@@ -279,13 +279,13 @@ export default {
         });
         headers.push({
           text: 'Valeur',
-          value: 'cost',
+          value: 'totalCost',
           align: 'center',
           class: 'text-no-wrap',
         });
         headers.push({
           text: 'Valeur de l\'écart',
-          value: 'errOdoo',
+          value: 'errorCost',
           align: 'center',
           class: 'text-no-wrap',
         });
@@ -445,6 +445,8 @@ export default {
         productAndCounts.counts = [];
         productAndCounts.errOdoo = 0;
         productAndCounts.totalQty = 0;
+        productAndCounts.totalCost = 0;
+        productAndCounts.errorCost = 0;
         productAndCounts.modified = false;
         this.productsAndCounts.push(productAndCounts);
       });
@@ -521,6 +523,13 @@ export default {
 
       updatedProductsAndCounts.forEach((productAndCounts) => {
         this.updateErrors(productAndCounts);
+      });
+
+      this.productsAndCounts.forEach((pc) => {
+        // eslint-disable-next-line no-param-reassign
+        pc.totalCost = (pc.totalQty ? pc.totalQty : pc.qty_in_odoo) * pc.cost;
+        // eslint-disable-next-line no-param-reassign
+        pc.errorCost = (pc.errOdoo ? pc.errOdoo : 0) * pc.cost;
       });
 
       this.someErrorInCounts = findIndex(
@@ -617,7 +626,6 @@ export default {
       this.productsAndCounts.forEach((productAndCounts) => {
         if (!this.partialInventory || productAndCounts.counts.length > 0) {
           if (productAndCounts.totalQty !== productAndCounts.qty_in_odoo) {
-            console.log(productAndCounts);
             // Only push product with disparity
             data.push([
               '',

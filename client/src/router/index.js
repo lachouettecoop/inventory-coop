@@ -12,7 +12,6 @@ async function redirectIfNotLogged(to, from, next) {
   const publicPages = ['/login'];
   const authRequired = !publicPages.includes(to.path);
   const { loggedIn } = store.getters['authentication/status'];
-  console.log({ authRequired, loggedIn });
 
   if (authRequired && !loggedIn) {
     const token = getTokenFromCookie();
