@@ -529,7 +529,7 @@ export default {
         // eslint-disable-next-line no-param-reassign
         pc.totalCost = (pc.totalQty ? pc.totalQty : pc.qty_in_odoo) * pc.cost;
         // eslint-disable-next-line no-param-reassign
-        pc.errorCost = (pc.errOdoo ? pc.errOdoo : 0) * pc.cost;
+        pc.errorCost = (pc.totalQty - pc.qty_in_odoo) * pc.cost;
       });
 
       this.someErrorInCounts = findIndex(
