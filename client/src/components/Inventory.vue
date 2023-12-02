@@ -220,6 +220,9 @@ export default {
     productFilter() {
       this.applyFilter();
     },
+    partialInventory() {
+      this.applyFilter();
+    },
   },
   computed: {
     inventoryId() {
@@ -576,7 +579,7 @@ export default {
     },
     applyFilter() {
       this.filtredProductsAndCounts = [];
-      if (isEmpty(this.productFilter)) {
+      if (isEmpty(this.productFilter) && !this.partialInventory) {
         this.filtredProductsAndCounts = this.productsAndCounts;
       } else {
         const filters = this.productFilter
@@ -593,6 +596,9 @@ export default {
               keepThisProduct = false;
               break;
             }
+          }
+          if (keepThisProduct && this.partialInventory && product.counts.length === 0) {
+            keepThisProduct = false;
           }
           if (keepThisProduct) {
             this.filtredProductsAndCounts.push(product);
