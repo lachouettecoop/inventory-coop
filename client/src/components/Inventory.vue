@@ -62,7 +62,7 @@
                   </v-radio-group>
                 </template>
                 <template v-else>
-                  <span class="title">Valeur du stock: {{totalCost()}}</span>
+                  <span class="title">Valeur de l'inventaire: {{totalCost()}}</span>
                 </template>
               </v-layout>
             </v-layout>
@@ -323,6 +323,8 @@ export default {
         resource: this.inventory,
         payload: { state },
       });
+      this.partialInventory = false;
+      this.updateProductsAndCounts();
     },
     errorOdooClass(product) {
       if (product.errOdoo !== 0) {
@@ -529,8 +531,12 @@ export default {
       });
 
       this.productsAndCounts.forEach((pc) => {
+        if (pc.counts.length === 0) {
+          // eslint-disable-next-line no-param-reassign
+          pc.errOdoo = 0 - pc.qty_in_odoo;
+        }
         // eslint-disable-next-line no-param-reassign
-        pc.totalCost = (pc.totalQty ? pc.totalQty : pc.qty_in_odoo) * pc.cost;
+        pc.totalCost = pc.totalQty * pc.cost;
         // eslint-disable-next-line no-param-reassign
         pc.errorCost = (pc.totalQty - pc.qty_in_odoo) * pc.cost;
       });
