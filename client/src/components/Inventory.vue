@@ -182,7 +182,7 @@ export default {
       productFilter: '',
       radioGroup: 'Toutes',
       sortBy: [],
-      partialInventory: false,
+      partialInventory: true,
     };
   },
   beforeMount() {
