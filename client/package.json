@@ -10,17 +10,16 @@
   "dependencies": {
     "@fortawesome/fontawesome-free": "^5.15.4",
     "axios": "^0.21.4",
-    "core-js": "^3.33.2",
+    "core-js": "^3.39.0",
     "js-cookie": "^2.2.1",
     "jwt-decode": "^3.1.2",
     "lodash": "^4.17.21",
-    "moment": "^2.29.1",
+    "moment": "^2.30.1",
     "papaparse": "^5.3.1",
     "roboto-fontface": "*",
-    "vue": "^2.6.14",
+    "vue": "^2.7.16",
     "vue-router": "^3.5.3",
-    "vue-socket.io": "^3.0.10",
-    "vuetify": "^2.6.1",
+    "vuetify": "^2.7.2",
     "vuex": "^3.6.2"
   },
   "devDependencies": {
@@ -32,12 +31,12 @@
     "@vue/eslint-config-airbnb": "^5.3.0",
     "babel-eslint": "^10.1.0",
     "eslint": "^7.32.0",
-    "eslint-plugin-import": "^2.25.3",
+    "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-vue": "^7.20.0",
-    "sass": "^1.44.0",
-    "sass-loader": "^10.2.0",
+    "sass": "^1.80.6",
+    "sass-loader": "^10.5.2",
     "vue-cli-plugin-vuetify": "^2.4.5",
-    "vue-template-compiler": "^2.6.14",
+    "vue-template-compiler": "^2.7.16",
     "vuetify-loader": "^1.7.3"
   }
 }

@@ -1,4 +1,3 @@
-import Vue from 'vue';
 import axios from 'axios';
 import { forEach, isArray } from 'lodash';
 
@@ -74,25 +73,6 @@ const counts = {
         });
       });
     },
-    WS_connect(context) {
-      context.commit('setConnected', true);
-      // set sids
-      if (!context.state.starting_sid) {
-        context.commit('set_starting_sid', Vue.prototype.$socket.id);
-      }
-      context.commit('set_current_sid', Vue.prototype.$socket.id);
-    },
-    WS_disconnect(context) {
-      context.commit('setConnected', false);
-    },
-    WS_new_count(context, data) {
-      context.commit('resetError');
-      context.commit('setResources', data);
-    },
-    WS_error(context, message) {
-      context.commit('resetError');
-      context.commit('setError', message.error);
-    },
   },
   mutations: {
     setDataLoading(state, value) {
@@ -111,20 +91,8 @@ const counts = {
         addCount(data, state);
       }
     },
-    setConnected(state, payload) {
-      state.connected = payload;
-    },
-    set_starting_sid(state, payload) {
-      state.starting_sid = payload;
-    },
-    set_current_sid(state, payload) {
-      state.current_sid = payload;
-    },
     setError(state, payload) {
       state.error = payload;
-    },
-    resetError(state) {
-      state.error = null;
     },
   },
 };
