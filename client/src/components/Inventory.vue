@@ -203,6 +203,12 @@ export default {
     });
   },
   watch: {
+    inventory: {
+      handler() {
+        this.applyFilter();
+      },
+      deep: true,
+    },
     products() {
       if (isEmpty(this.productsAndCounts)) {
         this.initProductAndCounts();
@@ -323,8 +329,6 @@ export default {
         resource: this.inventory,
         payload: { state },
       });
-      this.partialInventory = false;
-      this.updateProductsAndCounts();
     },
     errorOdooClass(product) {
       if (product.errOdoo !== 0) {
@@ -585,7 +589,8 @@ export default {
     },
     applyFilter() {
       this.filtredProductsAndCounts = [];
-      if (isEmpty(this.productFilter) && !this.partialInventory) {
+      const partialView = this.partialInventory && this.inventory.state === 2;
+      if (isEmpty(this.productFilter) && !partialView) {
         this.filtredProductsAndCounts = this.productsAndCounts;
       } else {
         const filters = this.productFilter
@@ -603,7 +608,7 @@ export default {
               break;
             }
           }
-          if (keepThisProduct && this.partialInventory && product.counts.length === 0) {
+          if (keepThisProduct && partialView && product.counts.length === 0) {
             keepThisProduct = false;
           }
           if (keepThisProduct) {
